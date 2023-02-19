@@ -15,9 +15,10 @@ data Wave = Wave
     len :: Float,
     samples :: [Sample]
   }
+  deriving (Read, Show)
 
 createWave :: Float -> Float -> Float -> Float -> Float -> Float -> Wave
-createWave amp freq phase len sampling trans =
+createWave amp freq phase trans len sampling =
   Wave
     { amplitude = amp,
       frequency = freq,
