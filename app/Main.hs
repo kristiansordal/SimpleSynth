@@ -4,8 +4,6 @@
 
 module Main where
 
-import Control.Monad
--- import Data.Aeson
 import Graphics.Matplotlib
 import Text.Read
 import Wave
@@ -20,49 +18,39 @@ genericInput s = do
       putStrLn "Incorrect type, try again."
       genericInput s
 
-inputWave :: IO Wave
-inputWave = do
+inputWave :: Float -> Float -> IO Wave
+inputWave l s = do
   freq <- genericInput "Enter wave frequency: "
   amp <- genericInput "Enter wave amplitude: "
   phase <- genericInput "Enter wave phase: "
   trans <- genericInput "Enter waves translation: "
-  len <- genericInput "Enter wave length: "
-  sampling <- genericInput "Enter sampling rate: "
 
-  return $ createWave amp freq phase len sampling trans
+  return $ createWave amp freq phase l s trans
 
-nWaves :: Int -> IO [Wave]
-nWaves 0 = return []
-nWaves n =
+nWaves :: Int -> Float -> Float -> IO [Wave]
+nWaves 0 _ _ = return []
+nWaves n l s =
   do
-    w <- inputWave
-    ws <- nWaves (n - 1)
+    w <- inputWave l s
+    ws <- nWaves (n - 1) l s
     return (w : ws)
-
-plots =
-  onscreen $
-    subplots
-      @@ [o2 "nrows" 1, o2 "ncols" 1]
-      % setSubplot 0
-      % plot [0 .. 1] [0 .. 1]
 
 main :: IO ()
 main =
   do
-    -- putStr "How many waves? "
-    -- n <- getLine
     n <- genericInput "How many waves? "
-    ws <- nWaves (round n)
+    l <- genericInput "Enter length of waves: "
+    s <- genericInput "Enter sampling rate: "
+    ws <- nWaves (round n) l s
     let ws' = interference ws
         ws'' = ws' : map samples ws
         xCoords = map fst ws'
-    -- plots = [setSubplot i % plot (toJSON xCoords) (toJSON (samples w)) | (i, w) <- zip [0 ..] ws]
-
+        plots = [setSubplot (i - 1) % plot xCoords (map snd w) | (i, w) <- zip [0 ..] ws'']
+        func = foldl (%) mp plots
+    print (length ws'')
+    print (zip [0 ..] ws'')
     onscreen $
       subplots
-        @@ [o2 "nrows" 1, o2 "ncols" 1]
-        % setSizeInches 24 13
-        % setSubplot 0
-        % plot (map fst ws') (map snd ws')
-        % setSubplot 1
-        % plot (map fst ws') (map snd ws')
+        @@ [o2 "nrows" (round n + 1), o2 "ncols" 1]
+        % setSizeInches 10 10
+        % func
