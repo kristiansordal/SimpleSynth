@@ -1,13 +1,16 @@
 {-# LANGUAGE ExtendedDefaultRules #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -Wno-type-defaults #-}
 
 module Main where
 
-import Data.Array
+import Data.Array.CArray
 import Data.Complex
 import Graphics.Matplotlib
-import Numeric.Transform.Fourier.DFT
+-- import Math.FFT
+-- import Numeric.Transform.Fourier.DFT
+import Numeric.Transform.Fourier.FFT
 import System.Random
 import Text.Read
 import Wave
@@ -45,13 +48,20 @@ genRandomWaves n l s =
   createWave (head randNums) (randNums !! 1) (randNums !! 2) (randNums !! 3) l s : genRandomWaves (n - 1) l s
   where
     gen = mkStdGen n
-    randNums = take 10 $ randomRs (0.0, 18.0) gen
+    randNums = take 10 $ randomRs (0.0, 10.0) gen
 
 getWaves :: String -> Int -> Float -> Float -> IO [Wave]
 getWaves str n l s
   | str == "y" = return (genRandomWaves n l s)
   | str == "n" = nWaves n l s
   | otherwise = error "Wrong input"
+
+-- calcDFT :: [Float] -> Float -> [Float]
+calcDFT tp sampling =
+  let complexArr = listArray (0, length tp - 2) tp
+      dftArr = rfft complexArr
+      freqBins = map (\x -> (x * sampling) `div` length dftArr) [0 .. length dftArr]
+   in take (length freqBins `div` 2) freqBins
 
 main :: IO ()
 main =
@@ -64,18 +74,32 @@ main =
     ws <- getWaves rand (round n) l s
     let ws' = interference ws
         ws'' = ws' : map samples ws
-        xCoords = map fst ws'
-        plots = [setSubplot (round n - i) % plot xCoords (map snd w) | (i, w) <- zip [0 ..] ws'']
-        func = foldr (%) mp (reverse plots)
-        yCoords = map snd ws'
-        complex = listArray (0, length yCoords - 1) (map (:+ 0) yCoords)
-        dftArr = dft complex
-        dftList = map (\(x :+ _) -> x) (elems dftArr)
-        pl = zip [0 ..] dftList
-    print ws
+        dftArr = calcDFT (map snd ws') (round s)
+    print dftArr
+
+    --         xCoords = map fst ws'
+    --         plots = [setSubplot (round n - i) % plot xCoords (map snd w) | (i, w) <- zip [0 ..] ws'']
+    --         func = foldr (%) mp (reverse plots)
+    --         yCoords = map snd ws'
+    --         c = array (0, length yCoords - 1) (zip [0 ..] (map (:+ 0) yCoords))
+    --     -- dftArr = fftr (listArray (0, length `div` 2) (elems c))
+    --     -- dftList = map (\(x :+ _) -> abs x / s) (elems dftArr)
+    --     -- pl = zip [0 ..] (drop 1 (take (length dftList `div` 2) dftList))
     onscreen $
       subplots
-        @@ [o2 "nrows" 1, o2 "ncols" 1]
+        @@ [o2 "nrows" (round n + 1), o2 "ncols" 1]
         % setSizeInches 10 8
         % setSubplot 0
-        % plot (map fst pl) (map snd pl)
+        % plot [0 ..] dftArr
+
+--         % func
+--         % subplots
+--         @@ [o2 "nrows" 2, o2 "ncols" 1]
+--         % setSizeInches 10 8
+--         % setSubplot 0
+--         % title "Time Domain"
+--         % plot (map fst ws') (map snd ws')
+--         % setSubplot 1
+--         % title "Frequency Domain"
+
+-- -- % plot (map fst pl) (map snd pl)
