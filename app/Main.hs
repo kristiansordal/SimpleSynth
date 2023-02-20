@@ -67,15 +67,13 @@ main =
         xCoords = map fst ws'
         plots = [setSubplot (round n - i) % plot xCoords (map snd w) | (i, w) <- zip [0 ..] ws'']
         func = foldr (%) mp (reverse plots)
-        yCoords = map snd ws'
-        complex = listArray (0, length yCoords - 1) (map (:+ 0) yCoords)
-        dftArr = dft complex
-        dftList = map (\(x :+ _) -> x) (elems dftArr)
-        pl = zip [0 ..] dftList
+    -- yCoords = map snd ws'
     print ws
     onscreen $
       subplots
-        @@ [o2 "nrows" 1, o2 "ncols" 1]
+        @@ [o2 "nrows" (round n + 1), o2 "ncols" 1]
         % setSizeInches 10 8
         % setSubplot 0
-        % plot (map fst pl) (map snd pl)
+        % func
+
+-- % plot (map fst pl) (map snd pl)
