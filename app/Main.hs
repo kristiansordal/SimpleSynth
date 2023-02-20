@@ -2,11 +2,13 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 {-# OPTIONS_GHC -Wno-type-defaults #-}
+{-# OPTIONS_GHC -Wno-unused-local-binds #-}
 
 module Main where
 
 import Data.Array.CArray
 import Data.Complex
+import Data.List
 import Graphics.Matplotlib
 -- import Math.FFT
 -- import Numeric.Transform.Fourier.DFT
@@ -58,10 +60,12 @@ getWaves str n l s
 
 -- calcDFT :: [Float] -> Float -> [Float]
 calcDFT tp sampling =
-  let complexArr = listArray (0, length tp - 2) tp
-      dftArr = rfft complexArr
+  let arr = listArray (0, length tp - 2) tp
+      dftArr = rfft arr
+      magnitudes = map (\(x :+ y) -> sqrt ((x * x) + (y * y))) (drop 1 $ take (length dftArr `div` 2) (elems dftArr))
       freqBins = map (\x -> (x * sampling) `div` length dftArr) [0 .. length dftArr]
-   in take (length freqBins `div` 2) freqBins
+      groups = map length (group freqBins)
+   in zip freqBins magnitudes
 
 main :: IO ()
 main =
@@ -75,7 +79,9 @@ main =
     let ws' = interference ws
         ws'' = ws' : map samples ws
         dftArr = calcDFT (map snd ws') (round s)
-    print dftArr
+        d = zip [0.0, 1 / n ..] (map snd dftArr)
+        freqs = map frequency ws
+    print freqs
 
     --         xCoords = map fst ws'
     --         plots = [setSubplot (round n - i) % plot xCoords (map snd w) | (i, w) <- zip [0 ..] ws'']
@@ -87,10 +93,10 @@ main =
     --     -- pl = zip [0 ..] (drop 1 (take (length dftList `div` 2) dftList))
     onscreen $
       subplots
-        @@ [o2 "nrows" (round n + 1), o2 "ncols" 1]
+        @@ [o2 "nrows" 1, o2 "ncols" 1]
         % setSizeInches 10 8
         % setSubplot 0
-        % plot [0 ..] dftArr
+        % plot (map fst d) (map snd d)
 
 --         % func
 --         % subplots
