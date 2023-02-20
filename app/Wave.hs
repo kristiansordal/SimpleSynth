@@ -7,8 +7,6 @@ import Data.List
 
 type Sample = (Float, Float)
 
--- instance RealFloat
-
 data Wave = Wave
   { amplitude :: Float,
     frequency :: Float,

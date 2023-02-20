@@ -10,8 +10,6 @@ import Data.Array.CArray
 import Data.Complex
 import Data.List
 import Graphics.Matplotlib
--- import Math.FFT
--- import Numeric.Transform.Fourier.DFT
 import Numeric.Transform.Fourier.FFT
 import System.Random
 import Text.Read
@@ -58,7 +56,6 @@ getWaves str n l s
   | str == "n" = nWaves n l s
   | otherwise = error "Wrong input"
 
--- calcDFT :: [Float] -> Float -> [Float]
 calcDFT tp sampling =
   let arr = listArray (0, length tp - 2) tp
       dftArr = rfft arr
