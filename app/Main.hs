@@ -64,6 +64,11 @@ calcDFT tp sampling =
       groups = map length (group freqBins)
    in zip freqBins magnitudes
 
+fixPlot [] = []
+fixPlot (x : xs)
+  | snd x > 0 = (fst x, 0) : x : (fst x, 0) : fixPlot xs
+  | otherwise = x : fixPlot xs
+
 main :: IO ()
 main =
   do
@@ -75,34 +80,22 @@ main =
     ws <- getWaves rand (round n) l s
     let ws' = interference ws
         ws'' = ws' : map samples ws
-        dftArr = calcDFT (map snd ws') (round s)
-        d = zip [0.0, 1 / n ..] (map snd dftArr)
+        dftArr = fixPlot (calcDFT (map snd ws') (round s))
         freqs = map frequency ws
-    print freqs
+        xCoords = map fst ws'
+        plots = [setSubplot (round n - i) % plot xCoords (map snd w) | (i, w) <- zip [0 ..] ws'']
+        func = foldr (%) mp (reverse plots)
 
-    --         xCoords = map fst ws'
-    --         plots = [setSubplot (round n - i) % plot xCoords (map snd w) | (i, w) <- zip [0 ..] ws'']
-    --         func = foldr (%) mp (reverse plots)
-    --         yCoords = map snd ws'
-    --         c = array (0, length yCoords - 1) (zip [0 ..] (map (:+ 0) yCoords))
-    --     -- dftArr = fftr (listArray (0, length `div` 2) (elems c))
-    --     -- dftList = map (\(x :+ _) -> abs x / s) (elems dftArr)
-    --     -- pl = zip [0 ..] (drop 1 (take (length dftList `div` 2) dftList))
     onscreen $
       subplots
         @@ [o2 "nrows" (round n + 1), o2 "ncols" 1]
         % setSizeInches 10 8
+        % func
+        % subplots
+        @@ [o2 "nrows" 2, o2 "ncols" 1]
         % setSubplot 0
-        % plot (map fst d) (map snd d)
-
---         % func
---         % subplots
---         @@ [o2 "nrows" 2, o2 "ncols" 1]
---         % setSizeInches 10 8
---         % setSubplot 0
---         % title "Time Domain"
---         % plot (map fst ws') (map snd ws')
---         % setSubplot 1
---         % title "Frequency Domain"
-
--- -- % plot (map fst pl) (map snd pl)
+        % title "Time Domain"
+        % plot xCoords (map snd ws')
+        % setSubplot 1
+        % title "Frequency Domain"
+        % plot (map fst dftArr) (map snd dftArr)
