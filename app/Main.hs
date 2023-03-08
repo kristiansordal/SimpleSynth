@@ -32,7 +32,7 @@ inputWave l s = do
   phase <- genericInput "Enter wave phase: "
   trans <- genericInput "Enter waves translation: "
 
-  return $ createWave amp freq phase trans l s
+  return $ createWave amp (round freq) phase trans l s
 
 nWaves :: Int -> Float -> Float -> IO [Wave]
 nWaves 0 _ _ = return []
@@ -45,10 +45,10 @@ nWaves n l s =
 genRandomWaves :: Int -> Float -> Float -> [Wave]
 genRandomWaves 0 _ _ = []
 genRandomWaves n l s =
-  createWave (head randNums) (randNums !! 1) (randNums !! 2) (randNums !! 3) l s : genRandomWaves (n - 1) l s
+  createWave (head randNums) (round (randNums !! 1)) (randNums !! 2) (randNums !! 3) l s : genRandomWaves (n - 1) l s
   where
     gen = mkStdGen n
-    randNums = take 10 $ randomRs (0.0, 10.0) gen
+    randNums = take 10 $ randomRs (1.0, 20) gen
 
 getWaves :: String -> Int -> Float -> Float -> IO [Wave]
 getWaves str n l s
@@ -59,7 +59,7 @@ getWaves str n l s
 calcDFT tp sampling =
   let arr = listArray (0, length tp - 2) tp
       dftArr = rfft arr
-      magnitudes = map (\(x :+ y) -> sqrt ((x * x) + (y * y))) (drop 1 $ take (length dftArr `div` 2) (elems dftArr))
+      magnitudes = map (\(x :+ y) -> sqrt ((x * x) + (y * y))) (tail $ take (length dftArr `div` 2) (elems dftArr))
       freqBins = map (\x -> (x * sampling) `div` length dftArr) [0 .. length dftArr]
       groups = map length (group freqBins)
    in zip freqBins magnitudes
@@ -93,6 +93,7 @@ main =
         % func
         % subplots
         @@ [o2 "nrows" 2, o2 "ncols" 1]
+        % setSizeInches 10 8
         % setSubplot 0
         % title "Time Domain"
         % plot xCoords (map snd ws')

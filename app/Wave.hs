@@ -9,7 +9,7 @@ type Sample = (Float, Float)
 
 data Wave = Wave
   { amplitude :: Float,
-    frequency :: Float,
+    frequency :: Integer,
     phase :: Float,
     translation :: Float,
     len :: Float,
@@ -17,7 +17,9 @@ data Wave = Wave
   }
   deriving (Read, Show)
 
-createWave :: Float -> Float -> Float -> Float -> Float -> Float -> Wave
+
+
+createWave :: Float -> Integer -> Float -> Float -> Float -> Float -> Wave
 createWave amp freq phase trans len sampling =
   Wave
     { amplitude = amp,
@@ -29,7 +31,7 @@ createWave amp freq phase trans len sampling =
     }
   where
     xCoords = [0.0, 1 / sampling .. len]
-    yCoords = map (\x -> amp * sin (2 * pi * freq * x + phase) + trans) xCoords
+    yCoords = map (\x -> amp * sin (2 * pi * fromIntegral freq * x + phase) + trans) xCoords
 
 interference :: [Wave] -> [Sample]
 interference ws = zip (map fst (samples $ head ws)) yCoords

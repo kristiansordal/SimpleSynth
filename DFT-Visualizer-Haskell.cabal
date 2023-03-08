@@ -13,13 +13,28 @@ extra-doc-files:    CHANGELOG.md
 -- extra-source-files:
 
 common warnings
-    ghc-options: -Wall
+    ghc-options: -Wall -fno-warn-missing-signatures -fno-ghci-sandbox
 
 executable DFT-Visualizer-Haskell
     import:           warnings
     main-is:          Main.hs
-    -- other-modules:
+    other-modules:    Wave,
+                      Parser 
     -- other-extensions:
-    build-depends:    base ^>=4.16.3.0
+    build-depends:    base ^>=4.16.3.0,
+                      mtl,
+                      matplotlib,
+                      aeson,
+                      vector,
+                      random,
+                      gloss,
+                      array,
+                      carray,
+                      fft,
+                      dsp,
+                      extra,
+                      normaldistribution,
+                      regex-compat
+
     hs-source-dirs:   app
     default-language: Haskell2010
