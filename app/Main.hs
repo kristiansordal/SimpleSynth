@@ -11,7 +11,9 @@ import Data.Complex
 import Data.List
 import Graphics.Matplotlib
 import Numeric.Transform.Fourier.FFT
+import Parser
 import System.Random
+import Text.Megaparsec
 import Text.Read
 import Wave
 
@@ -25,16 +27,37 @@ genericInput s = do
       putStrLn "Incorrect type, try again."
       genericInput s
 
-inputWave :: Float -> Float -> IO Wave
+inputWave :: Float -> Float -> IO [Sample]
 inputWave l s = do
-  freq <- genericInput "Enter wave frequency: "
-  amp <- genericInput "Enter wave amplitude: "
-  phase <- genericInput "Enter wave phase: "
-  trans <- genericInput "Enter waves translation: "
+  putStrLn "Select input mode: "
+  putStrLn "1: Manual input"
+  putStr "2: Expression input "
+  selection <- getLine
+  case selection of
+    "1" -> do
+      freq <- genericInput "Enter wave frequency: "
+      amp <- genericInput "Enter wave amplitude: "
+      phase <- genericInput "Enter wave phase: "
+      trans <- genericInput "Enter waves translation: "
+      let w = Wave amp freq phase trans
+      return $ createWaveSample w l s
+    "2" -> inputWaveExpression l s
+    _ -> do
+      putStrLn "Invalid choice, try again."
+      inputWave l s
 
-  return $ createWave amp (round freq) phase trans l s
+inputWaveExpression :: Float -> Float -> IO [Sample]
+inputWaveExpression l s = do
+  putStrLn "Enter expression for wave: "
+  input <- getLine
+  let w = runParser parseWave "" input
+  case w of
+    Left err -> do
+      putStrLn (errorBundlePretty err)
+      inputWaveExpression l s
+    Right x -> return $ createWaveSample x l s
 
-nWaves :: Int -> Float -> Float -> IO [Wave]
+nWaves :: Int -> Float -> Float -> IO [[Sample]]
 nWaves 0 _ _ = return []
 nWaves n l s =
   do
@@ -42,15 +65,15 @@ nWaves n l s =
     ws <- nWaves (n - 1) l s
     return (w : ws)
 
-genRandomWaves :: Int -> Float -> Float -> [Wave]
+genRandomWaves :: Int -> Float -> Float -> [[Sample]]
 genRandomWaves 0 _ _ = []
 genRandomWaves n l s =
-  createWave (head randNums) (round (randNums !! 1)) (randNums !! 2) (randNums !! 3) l s : genRandomWaves (n - 1) l s
+  createWaveSample (Wave (head randNums) (randNums !! 1) (randNums !! 2) (randNums !! 3)) l s : genRandomWaves (n - 1) l s
   where
     gen = mkStdGen n
     randNums = take 10 $ randomRs (1.0, 20) gen
 
-getWaves :: String -> Int -> Float -> Float -> IO [Wave]
+getWaves :: String -> Int -> Float -> Float -> IO [[Sample]]
 getWaves str n l s
   | str == "y" = return (genRandomWaves n l s)
   | str == "n" = nWaves n l s
@@ -79,9 +102,8 @@ main =
     rand <- getLine
     ws <- getWaves rand (round n) l s
     let ws' = interference ws
-        ws'' = ws' : map samples ws
+        ws'' = ws' : ws
         dftArr = fixPlot (calcDFT (map snd ws') (round s))
-        freqs = map frequency ws
         xCoords = map fst ws'
         plots = [setSubplot (round n - i) % plot xCoords (map snd w) | (i, w) <- zip [0 ..] ws'']
         func = foldr (%) mp (reverse plots)
