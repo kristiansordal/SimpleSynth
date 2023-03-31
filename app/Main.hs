@@ -8,7 +8,9 @@ module Main where
 
 import Data.Array.CArray
 import Data.Complex
+import Data.Either
 import Data.List
+import Data.List.Extra
 import Graphics.Matplotlib
 import Numeric.Transform.Fourier.FFT
 import Parser
@@ -50,12 +52,15 @@ inputWaveExpression :: Float -> Float -> IO [Sample]
 inputWaveExpression l s = do
   putStrLn "Enter expression for wave: "
   input <- getLine
-  let w = runParser parseWave "" input
-  case w of
+  let input' = filter (/= ' ') input
+  let xCoords = [0.0, 1 / s .. l]
+  let inputs = map (\x' -> replace "x" (show x') input) xCoords
+  let yCoords = mapM (runParser expression "") inputs
+  case yCoords of
     Left err -> do
       putStrLn (errorBundlePretty err)
       inputWaveExpression l s
-    Right x -> return $ createWaveSample x l s
+    Right yCoords' -> return (zip xCoords yCoords')
 
 nWaves :: Int -> Float -> Float -> IO [[Sample]]
 nWaves 0 _ _ = return []
@@ -103,7 +108,7 @@ main =
     ws <- getWaves rand (round n) l s
     let ws' = interference ws
         ws'' = ws' : ws
-        dftArr = fixPlot (calcDFT (map snd ws') (round s))
+        dftArr = calcDFT (map snd ws') (round s)
         xCoords = map fst ws'
         plots = [setSubplot (round n - i) % plot xCoords (map snd w) | (i, w) <- zip [0 ..] ws'']
         func = foldr (%) mp (reverse plots)

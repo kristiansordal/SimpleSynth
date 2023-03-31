@@ -34,7 +34,8 @@ executable DFT-Visualizer-Haskell
                       dsp,
                       extra,
                       normaldistribution,
-                      megaparsec
+                      megaparsec,
+                      parser-combinators
 
     hs-source-dirs:   app
     default-language: Haskell2010

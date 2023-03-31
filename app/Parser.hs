@@ -1,22 +1,25 @@
 module Parser where
 
-import Data.Maybe
+-- import Text.Megaparsec.Char.Lexer hiding (float, space)
+
+import Control.Monad.Combinators.Expr
+import Data.Functor
+import Data.Maybe (fromMaybe)
 import Data.Void
-import Numeric
 import Text.Megaparsec
 import Text.Megaparsec.Char
-import Text.Read (readMaybe)
+import Text.Megaparsec.Char.Lexer hiding (float, space)
 import Wave
 
-type Parser a = Parsec Void String a
+type Parser = Parsec Void String
 
 -- Takes a parser and returns a parser of whats between the parenthesis
 betweenParen :: Parser a -> Parser a
-betweenParen = between (char '(' *> space) (space <* char ')')
+betweenParen = between (char '(') (char ')')
 
--- Parses a float
-parseDoubleOrFloat :: (Num a, Read a) => Parser a
-parseDoubleOrFloat = do
+-- Parses a double
+float :: Parser Float
+float = do
   ds <- some digitChar
   _ <- optional $ char '.'
   fs <- optional $ some digitChar
@@ -26,52 +29,46 @@ parseDoubleOrFloat = do
       fs'' = read $ "0." ++ fs'
   return $ ds'' + fs''
 
--- parseNum :: (Num a, Read a) => Parser a
--- parseNum = do
---   num <- some digitChar
---   dot <- optional $ char '.'
---   case dot of
---     --   Nothing -> return (read num)
---     --   Just dot' -> do
---     --     decimal <- some digitChar
---     --     return (read (num ++ [dot'case dot of
+opTable :: [[Operator Parser Float]]
+opTable =
+  [ [ InfixL (symbol space "*" $> (*)),
+      InfixL (symbol space "/" $> (/))
+    ],
+    [ InfixL (symbol space "+" $> (+)),
+      InfixL (symbol space "-" $> (-))
+    ],
+    [ Prefix (string "sin" *> optional space $> sin),
+      Prefix (string "cos" *> optional space $> cos)
+    ]
+  ]
 
-parseSigned :: Parser Float
-parseSigned = do
-  sign <- char '+' <|> char '-'
-  num <- optional space *> parseDoubleOrFloat
-  case sign of
-    '+' -> return num
-    '-' -> return (negate num)
-    _ -> fail "Illegal sign."
+term :: Parser Float
+term = float <|> betweenParen expression
 
-parseOrdFreq :: Parser Float
-parseOrdFreq = do
-  _ <- string "2pi"
-  optional space *> parseDoubleOrFloat
+expression :: Parser Float
+expression = makeExprParser term opTable
 
-parseAngFreq :: Parser Float
-parseAngFreq = do
-  angFreq <- parseDoubleOrFloat
-  _ <- optional space *> string "rad/s"
-  return (angFreq / (2 * pi))
+opTable' :: [[Operator Parser WaveExpr]]
+opTable' =
+  [ [ InfixL (optional space *> symbol space "*" *> optional space $> Mult),
+      InfixL (optional space *> symbol space "/" *> optional space $> Div)
+    ],
+    [ InfixL (symbol space "+" *> optional space $> Add),
+      InfixL (symbol space "-" *> optional space $> Sub)
+    ],
+    [ Prefix (string "sin" *> optional space $> Sin),
+      Prefix (string "cos" *> optional space $> Cos)
+    ]
+  ]
 
-parseFrequency :: Parser Float
-parseFrequency = parseOrdFreq <|> parseAngFreq
+waveExpression :: Parser WaveExpr
+waveExpression = makeExprParser term' opTable'
 
-parseWave :: Parser Wave
-parseWave = do
-  amp <- parseDoubleOrFloat
-  _ <- optional space *> (string "sin" <|> string "cos")
-  _ <- char '('
-  f <- optional space *> parseFrequency
-  p <- optional space *> parseSigned
-  _ <- char ')'
-  t <- space *> parseSigned
-  return (Wave amp f p t)
+term' :: Parser WaveExpr
+term' = Lit <$> decimal <|> Var <$> string "x" <|> betweenParen waveExpression
 
-testParser = do
-  let x = runParser parseWave "" "2sin(1.75rad/s-1)+2"
+test = do
+  let x = runParser expression "" "2.0*(sin(1.0+10.0))+1.0"
   case x of
     Left err -> putStrLn (errorBundlePretty err)
     Right x' -> print x'
