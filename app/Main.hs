@@ -8,7 +8,6 @@ module Main where
 
 import Data.Array.CArray
 import Data.Complex
-import Data.Either
 import Data.List
 import Data.List.Extra
 import Graphics.Matplotlib
@@ -54,13 +53,15 @@ inputWaveExpression l s = do
   input <- getLine
   let input' = filter (/= ' ') input
   let xCoords = [0.0, 1 / s .. l]
-  let inputs = map (\x' -> replace "x" (show x') input) xCoords
-  let yCoords = mapM (runParser expression "") inputs
-  case yCoords of
+  let parsed = runParser waveExpression "" input'
+  case parsed of
     Left err -> do
       putStrLn (errorBundlePretty err)
       inputWaveExpression l s
-    Right yCoords' -> return (zip xCoords yCoords')
+    Right x -> do
+      let yCoords = map (eval x) xCoords
+      print x
+      return (zip xCoords yCoords)
 
 nWaves :: Int -> Float -> Float -> IO [[Sample]]
 nWaves 0 _ _ = return []
@@ -76,7 +77,7 @@ genRandomWaves n l s =
   createWaveSample (Wave (head randNums) (randNums !! 1) (randNums !! 2) (randNums !! 3)) l s : genRandomWaves (n - 1) l s
   where
     gen = mkStdGen n
-    randNums = take 10 $ randomRs (1.0, 20) gen
+    randNums = take 10 $ randomRs (1.0, s) gen
 
 getWaves :: String -> Int -> Float -> Float -> IO [[Sample]]
 getWaves str n l s
@@ -87,10 +88,23 @@ getWaves str n l s
 calcDFT tp sampling =
   let arr = listArray (0, length tp - 2) tp
       dftArr = rfft arr
-      magnitudes = map (\(x :+ y) -> sqrt ((x * x) + (y * y))) (tail $ take (length dftArr `div` 2) (elems dftArr))
+      magnitudes = map (\(x :+ _) -> sqrt (x * x)) (take (length dftArr `div` 2) (elems dftArr))
+      magnitudes' = map (\(x :+ _) -> 2 / 100 * abs x) (take (length dftArr `div` 2) (elems dftArr))
       freqBins = map (\x -> (x * sampling) `div` length dftArr) [0 .. length dftArr]
+      freqBins' = [0.0, (1 / fromIntegral sampling) .. fromIntegral $ maximum freqBins]
       groups = map length (group freqBins)
    in zip freqBins magnitudes
+
+calcDFT2 yCoords sampleRate signalLength = zip freqs magnitudes
+  where
+    n = sampleRate * signalLength
+    yCoords' = listArray (0, length yCoords - 1) yCoords
+    fftArr = rfft yCoords'
+    xCoords = take (n `div` 2) [0 .. n]
+    freqs = [0, 1 / (fromIntegral signalLength :: Float) .. fromIntegral n]
+    magnitudes = map (\x -> (2 * magnitude x) / (fromIntegral n :: Float)) (take (n `div` 2) (elems fftArr))
+
+-- magnitudes' = map (/ n) magnitudes
 
 fixPlot [] = []
 fixPlot (x : xs)
@@ -108,18 +122,18 @@ main =
     ws <- getWaves rand (round n) l s
     let ws' = interference ws
         ws'' = ws' : ws
-        dftArr = calcDFT (map snd ws') (round s)
+        dftArr = calcDFT2 (map snd ws') (round s) (round l)
         xCoords = map fst ws'
         plots = [setSubplot (round n - i) % plot xCoords (map snd w) | (i, w) <- zip [0 ..] ws'']
         func = foldr (%) mp (reverse plots)
 
     onscreen $
       subplots
-        @@ [o2 "nrows" (round n + 1), o2 "ncols" 1]
+        @@ [o2 "nrows" (round n + 1), o2 "ncols" 1, o2 "linewidth" 10]
         % setSizeInches 10 8
         % func
         % subplots
-        @@ [o2 "nrows" 2, o2 "ncols" 1]
+        @@ [o2 "nrows" 2, o2 "ncols" 1, o2 "linewidth" 25]
         % setSizeInches 10 8
         % setSubplot 0
         % title "Time Domain"

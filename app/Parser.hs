@@ -17,7 +17,8 @@ type Parser = Parsec Void String
 betweenParen :: Parser a -> Parser a
 betweenParen = between (char '(') (char ')')
 
--- Parses a double
+-- This parser is necessary to allow for both integers without decimal points
+-- to be parsed into float, aswell as numbers with decimal points
 float :: Parser Float
 float = do
   ds <- some digitChar
@@ -50,14 +51,14 @@ expression = makeExprParser term opTable
 
 opTable' :: [[Operator Parser WaveExpr]]
 opTable' =
-  [ [ InfixL (optional space *> symbol space "*" *> optional space $> Mult),
-      InfixL (optional space *> symbol space "/" *> optional space $> Div)
+  [ [ Prefix (string "sin" $> Sin),
+      Prefix (string "cos" $> Cos)
     ],
-    [ InfixL (symbol space "+" *> optional space $> Add),
-      InfixL (symbol space "-" *> optional space $> Sub)
+    [ InfixL (string "*" $> Mult),
+      InfixL (string "/" $> Div)
     ],
-    [ Prefix (string "sin" *> optional space $> Sin),
-      Prefix (string "cos" *> optional space $> Cos)
+    [ InfixL (string "+" $> Add),
+      InfixL (string "-" $> Sub)
     ]
   ]
 
@@ -65,10 +66,11 @@ waveExpression :: Parser WaveExpr
 waveExpression = makeExprParser term' opTable'
 
 term' :: Parser WaveExpr
-term' = Lit <$> decimal <|> Var <$> string "x" <|> betweenParen waveExpression
+term' = Lit <$> float <|> Var <$> string "x" <|> betweenParen waveExpression
 
 test = do
-  let x = runParser expression "" "2.0*(sin(1.0+10.0))+1.0"
+  let x = runParser waveExpression "" "sin(50*x)+0.5*sin(80*x)"
   case x of
     Left err -> putStrLn (errorBundlePretty err)
-    Right x' -> print x'
+    Right x' -> do
+      print x'
