@@ -51,7 +51,8 @@ expression = makeExprParser term opTable
 
 opTable' :: [[Operator Parser WaveExpr]]
 opTable' =
-  [ [ Prefix (string "sin" $> Sin),
+  [ [Postfix (string "x" $> Mult (Var "x"))],
+    [ Prefix (string "sin" $> Sin),
       Prefix (string "cos" $> Cos)
     ],
     [ InfixL (string "*" $> Mult),
@@ -69,7 +70,7 @@ term' :: Parser WaveExpr
 term' = Lit <$> float <|> Var <$> string "x" <|> betweenParen waveExpression
 
 test = do
-  let x = runParser waveExpression "" "sin(50*x)+0.5*sin(80*x)"
+  let x = runParser waveExpression "" "2x"
   case x of
     Left err -> putStrLn (errorBundlePretty err)
     Right x' -> do
