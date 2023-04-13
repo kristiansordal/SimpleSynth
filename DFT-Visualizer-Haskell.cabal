@@ -37,7 +37,7 @@ executable DFT-Visualizer-Haskell
                       normaldistribution,
                       megaparsec,
                       parser-combinators,
-                      process
+                      process ^>=1.6.17.0
 
     hs-source-dirs:   app
     default-language: Haskell2010

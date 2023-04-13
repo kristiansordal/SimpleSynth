@@ -30,27 +30,8 @@ float = do
       fs'' = read $ "0." ++ fs'
   return $ ds'' + fs''
 
-opTable :: [[Operator Parser Float]]
+opTable :: [[Operator Parser WaveExpr]]
 opTable =
-  [ [ InfixL (symbol space "*" $> (*)),
-      InfixL (symbol space "/" $> (/))
-    ],
-    [ InfixL (symbol space "+" $> (+)),
-      InfixL (symbol space "-" $> (-))
-    ],
-    [ Prefix (string "sin" *> optional space $> sin),
-      Prefix (string "cos" *> optional space $> cos)
-    ]
-  ]
-
-term :: Parser Float
-term = float <|> betweenParen expression
-
-expression :: Parser Float
-expression = makeExprParser term opTable
-
-opTable' :: [[Operator Parser WaveExpr]]
-opTable' =
   [ [Postfix (string "x" $> Mult (Var "x"))],
     [ Prefix (string "sin" $> Sin),
       Prefix (string "cos" $> Cos)
@@ -64,10 +45,10 @@ opTable' =
   ]
 
 waveExpression :: Parser WaveExpr
-waveExpression = makeExprParser term' opTable'
+waveExpression = makeExprParser term opTable
 
-term' :: Parser WaveExpr
-term' = Lit <$> float <|> Var <$> string "x" <|> betweenParen waveExpression
+term :: Parser WaveExpr
+term = Lit <$> float <|> Var <$> string "x" <|> betweenParen waveExpression
 
 test = do
   let x = runParser waveExpression "" "2x"

@@ -1,17 +1,11 @@
-import wave
 import scipy.io as si
-import matplotlib.pyplot as plt
+import sys
 
 def main():
 
-    w = si.wavfile.read('wavfiles/SinePy.wav') 
-    print(w[0])
-    print(w[1])
-    for x in w[1]:
-        print(x)
-    
-    sWave = list(map(sum, w[1]))
-    plt.plot(sWave)
-    plt.show()
+    samplerate, data = si.wavfile.read(f'wavfiles/{sys.argv[1]}.wav') 
+    sWave = list(map(sum, data))
+    print(samplerate)
+    print(sWave)
 if __name__ == '__main__':
     main()
