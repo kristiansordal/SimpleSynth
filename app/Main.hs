@@ -10,12 +10,15 @@ import FFT
 import Graphics.Matplotlib
 import Parser
 import Sound
+import System.CPUTime
 import System.IO
 import System.Process
 import System.Random
 import Text.Megaparsec
 import Text.Read
 import Wave
+
+type WaveInformation = (Int, Int, Int, [[Sample]], String)
 
 -- Function for a generic input of a float / number with text
 genericInput :: String -> IO Float
@@ -51,6 +54,7 @@ inputWaveExpression l s = do
       putStrLn (errorBundlePretty err)
       inputWaveExpression l s
     Right x -> do
+      print x
       let yCoords = map (eval x) xCoords
       return (zip xCoords yCoords)
 
@@ -69,11 +73,11 @@ inputWave l s = do
 
 -- TODO Needs random seed
 genRandomWave :: Float -> Float -> IO [Sample]
-genRandomWave l s =
+genRandomWave l s = do
+  seed <- getCPUTime
+  let gen = mkStdGen (fromIntegral seed)
+      randNums = take 10 $ randomRs (1.0, s) gen
   return $ createWaveSample (Wave (head randNums) (randNums !! 1) (randNums !! 2) (randNums !! 3)) l s
-  where
-    gen = mkStdGen 10
-    randNums = take 10 $ randomRs (1.0, s) gen
 
 getWaves :: Int -> Float -> Float -> IO [[Sample]]
 getWaves 0 _ _ = return []
@@ -102,7 +106,7 @@ readWavFile fileName = do
       sineWave = zip [0 ..] (read (last h) :: [Float])
   return (length sineWave, sampleRate, [sineWave])
 
-modeSelection :: IO (Int, Int, Int, [[Sample]])
+modeSelection :: IO WaveInformation
 modeSelection = do
   putStrLn "Select Mode: "
   putStrLn "1: Manual wave entry"
@@ -113,13 +117,13 @@ modeSelection = do
     "1" -> do
       (l, s, samples) <- selectionManual
       let samples' = interference samples : samples
-      return (1, l, s, samples')
+      return (1, l, s, samples', "wave.wav")
     "2" -> do
       putStrLn "Enter filename and filepath (if not in current directory) of a .wav file"
       putStr "$ "
       fileName <- getLine
       (l, s, samples) <- readWavFile fileName
-      return (2, l, s, samples)
+      return (2, l, s, samples, "wavfiles/" ++ fileName)
     _ -> error "Wrong input"
 
 selectionManual :: IO (Int, Int, [[Sample]])
@@ -131,35 +135,31 @@ selectionManual = do
   return (round l, round s, samples)
 
 main :: IO ()
-main =
-  do
-    (choice, l, s, samples) <- modeSelection
-    let freqs = extractFreqs dftArr
-        dftArr = calcFFT (map snd (head samples)) s l choice
-    samples' <- decompose dftArr (fromIntegral l :: Float) (fromIntegral s :: Float)
-    let n = length samples'
-        xCoords = map fst (head samples')
-        plots = [setSubplot (n - i) % plot xCoords (map snd w) | (i, w) <- zip [0 ..] samples']
-        func = foldr (%) mp (reverse plots)
+main = do
+  (choice, l, s, samples, fileName) <- modeSelection
+  let fftArr = calcFFT (map snd (head samples)) s l choice
+  samples' <- decompose fftArr (fromIntegral l :: Float) (fromIntegral s :: Float)
+  let n = length samples'
+      xCoords = map fst (head samples)
+      yCoords = map snd (head samples)
+      xCoordsFFT = map fst fftArr
+      yCoordsFFT = map snd fftArr
 
-    onscreen $
-      subplots
-        @@ [o2 "nrows" (n + 1), o2 "ncols" 1]
-        % setSizeInches 10 8
-        % func
-        % subplots
-        @@ [o2 "nrows" 2, o2 "ncols" 1]
-        % setSizeInches 10 8
-        % setSubplot 0
-        % title "Time Domain"
-        % plot (map fst (head samples)) (map snd (head samples))
-        @@ [o2 "linewidth" 0.5]
-        % setSubplot 1
-        % title "Frequency Domain"
-        % plot (map fst dftArr) (map snd dftArr)
-        @@ [o2 "linewidth" 1]
+  -- plot the wave generated aswell as the FFT of the wave
+  onscreen $
+    subplots
+      @@ [o2 "nrows" 2, o2 "ncols" 1]
+      % setSizeInches 10 8
+      % setSubplot 0
+      % title "Time Domain"
+      % plot xCoords yCoords
+      @@ [o2 "linewidth" 0.5]
+      % setSubplot 1
+      % title "Frequency Domain"
+      % plot xCoordsFFT yCoordsFFT
+      @@ [o2 "linewidth" 1]
 
-    -- play the sound from the wave generated
-    wave <- generateSound (head samples) (maxBound `div` 2) 32 (length samples `div` l)
-    writeWavFile wave
-    playSound
+  -- play the sound from the wave generated
+  wave <- generateSound (head samples) (maxBound `div` 2) 32 (length samples `div` l)
+  writeWavFile wave
+  playSound fileName

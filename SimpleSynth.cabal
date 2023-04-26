@@ -1,5 +1,5 @@
 cabal-version:      3.0
-name:               DFT-Visualizer-Haskell
+name:               SimpleSynth
 version:            0.1.0.0
 -- synopsis:
 -- description:
@@ -15,7 +15,7 @@ extra-doc-files:    CHANGELOG.md
 common warnings
     ghc-options: -Wall -fno-warn-missing-signatures -fno-ghci-sandbox
 
-executable DFT-Visualizer-Haskell
+executable SimpleSynth
     import:           warnings
     main-is:          Main.hs
     other-modules:    Wave,
@@ -43,7 +43,8 @@ executable DFT-Visualizer-Haskell
                       hsc3,
                       data-default-class,
                       hmatrix,
-                      WAVE
+                      WAVE,
+                      containers
 
     hs-source-dirs:   app
     default-language: Haskell2010

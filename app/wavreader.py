@@ -3,7 +3,7 @@ import sys
 
 def main():
 
-    samplerate, data = si.wavfile.read(f'wavfiles/{sys.argv[1]}.wav') 
+    samplerate, data = si.wavfile.read(f'wavfiles/{sys.argv[1]}') 
     sWave = list(map(sum, data))
     print(samplerate)
     print(sWave)

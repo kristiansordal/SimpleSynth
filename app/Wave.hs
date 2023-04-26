@@ -3,9 +3,16 @@
 
 module Wave where
 
+import Data.Fixed
 import Data.List
+import Data.Map (Map)
+import qualified Data.Map as Map
+import Data.Maybe
 
 type Sample = (Float, Float)
+
+variableState :: Map String Float
+variableState = Map.empty
 
 data WaveExpr
   = Lit Float
@@ -15,8 +22,13 @@ data WaveExpr
   | Mult WaveExpr WaveExpr
   | Div WaveExpr WaveExpr
   | Exp WaveExpr WaveExpr
-  | Cos WaveExpr
   | Sin WaveExpr
+  | Cos WaveExpr
+  | Asin WaveExpr
+  | Acos WaveExpr
+  | Mod WaveExpr WaveExpr
+  | Floor WaveExpr
+  | Signum WaveExpr
   deriving (Show, Read, Eq)
 
 data Wave = Wave
@@ -40,7 +52,9 @@ interference s = zip (map fst (head s)) yCoords
 
 eval :: WaveExpr -> Float -> Float
 eval (Lit x) _ = x
-eval (Var _) v = v
+eval (Var n) v
+  | n == "pi" = pi
+  | otherwise = v
 eval (Add x y) v = eval x v + eval y v
 eval (Sub x y) v = eval x v - eval y v
 eval (Mult x y) v = eval x v * eval y v
@@ -48,3 +62,8 @@ eval (Exp x y) v = eval x v ** eval y v
 eval (Div x y) v = eval x v / eval y v
 eval (Sin x) v = sin (2 * pi * eval x v)
 eval (Cos x) v = cos (2 * pi * eval x v)
+eval (Asin x) v = asin (eval x v)
+eval (Acos x) v = acos (eval x v)
+eval (Mod x y) v = eval x v `mod'` eval y v
+eval (Floor x) v = fromIntegral $ floor (eval x v) :: Float
+eval (Signum x) v = signum (eval x v)

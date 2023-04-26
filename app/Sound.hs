@@ -10,25 +10,29 @@ import qualified SDL
 import qualified SDL.Mixer as Mix
 import Wave
 
+header = WAVEHeader 1 48000 32 Nothing
+
 generateSound :: [Sample] -> Int32 -> Int -> Int -> IO WAVE
 generateSound samples volume bitrate hz = do
   return $ WAVE header (map (: []) sampleVol)
   where
     sampleVol = map (round . (* fromIntegral volume) . snd) samples :: [Int32]
-    header = WAVEHeader 1 48000 bitrate Nothing
 
 writeWavFile :: WAVE -> IO ()
 writeWavFile = putWAVEFile "wave.wav"
 
--- waveData = WAVE header samples
+whileTrueM :: Monad m => m Bool -> m ()
+whileTrueM cond = do
+  loop <- cond
+  when loop $ whileTrueM cond
 
-playSound :: IO ()
-playSound = do
+playSound :: String -> IO ()
+playSound file = do
   -- open device
   Mix.openAudio def 256
 
   -- open file
-  sound <- Mix.load "wave.wav"
+  sound <- Mix.load file
 
   -- play file
   Mix.play sound
@@ -45,8 +49,3 @@ playSound = do
   -- quit
   Mix.quit
   SDL.quit
-
-whileTrueM :: Monad m => m Bool -> m ()
-whileTrueM cond = do
-  loop <- cond
-  when loop $ whileTrueM cond
