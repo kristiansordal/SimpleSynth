@@ -20,24 +20,30 @@ executable DFT-Visualizer-Haskell
     main-is:          Main.hs
     other-modules:    Wave,
                       Parser,
-                      FFT
+                      FFT,
+                      Sound
     -- other-extensions:
-    build-depends:    base ^>=4.16.3.0,
+    build-depends:    base ^>=4.16.4.0,
                       mtl,
                       matplotlib,
                       aeson,
                       vector,
                       random,
-                      gloss,
                       array,
                       carray,
                       fft,
                       dsp,
                       extra,
-                      normaldistribution,
                       megaparsec,
                       parser-combinators,
-                      process ^>=1.6.17.0
+                      process ^>=1.6.16.0,
+                      bytestring,
+                      sdl2-mixer,
+                      sdl2,
+                      hsc3,
+                      data-default-class,
+                      hmatrix,
+                      WAVE
 
     hs-source-dirs:   app
     default-language: Haskell2010
