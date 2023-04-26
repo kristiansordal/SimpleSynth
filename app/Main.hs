@@ -6,12 +6,10 @@
 
 module Main where
 
-import Data.Array.CArray
-import Data.Complex
 import FFT
 import Graphics.Matplotlib
-import Numeric.Transform.Fourier.FFT
 import Parser
+import Sound
 import System.IO
 import System.Process
 import System.Random
@@ -95,40 +93,16 @@ getWaves n l s =
     ws <- getWaves (n - 1) l s
     return (w : ws)
 
-calcFFTmanual :: [Float] -> Int -> Int -> [Sample]
-calcFFTmanual yCoords sampleRate signalLength = zip freqs magnitudes
-  where
-    n = sampleRate * signalLength
-    yCoords' = listArray (0, length yCoords - 1) yCoords
-    fftArr = rfft yCoords'
-    xCoords = take (n `div` 2) [0 .. n]
-    freqs = [0, 1 / (fromIntegral signalLength :: Float) .. fromIntegral n]
-    magnitudes = map (\x -> (2 * magnitude x) / (fromIntegral n :: Float)) (take (n `div` 2) (elems fftArr))
-
-calcFFTwav :: [Float] -> Int -> Int -> [Sample]
-calcFFTwav yCoords sampleRate signalLength = zip xCoords magnitudes
-  where
-    yCoords' = listArray (0, length yCoords - 1) yCoords
-    fftArr = rfft yCoords'
-    xCoords = map (fromIntegral :: Int -> Float) (take (signalLength `div` 2) [0 .. signalLength])
-    magnitudes = map (\x -> (magnitude x :: Float) / fromIntegral sampleRate) (take (signalLength `div` 2) (elems fftArr))
-
-calcFFT :: [Float] -> Int -> Int -> Int -> [Sample]
-calcFFT yCoords sampleRate signalLength choice
-  | choice == 1 = calcFFTmanual yCoords sampleRate signalLength
-  | choice == 2 = calcFFTwav yCoords sampleRate signalLength
-  | otherwise = error $ "Choice not supported" ++ show choice
-
 -- TODO: Error handling
-readWavFile :: String -> IO (Int, Int, Int, [[Sample]])
+readWavFile :: String -> IO (Int, Int, [[Sample]])
 readWavFile fileName = do
   (_, Just hout, _, _) <- createProcess (proc "python3" ["wavreader.py", fileName]) {std_out = CreatePipe}
   h <- lines <$> hGetContents hout
   let sampleRate = read (head h) :: Int
       sineWave = zip [0 ..] (read (last h) :: [Float])
-  return (1, length sineWave, sampleRate, [sineWave])
+  return (length sineWave, sampleRate, [sineWave])
 
-modeSelection :: IO (Int, Int, Int, Int, [[Sample]])
+modeSelection :: IO (Int, Int, Int, [[Sample]])
 modeSelection = do
   putStrLn "Select Mode: "
   putStrLn "1: Manual wave entry"
@@ -137,33 +111,35 @@ modeSelection = do
   choice <- getLine
   case choice of
     "1" -> do
-      (n, l, s, samples) <- selectionManual
+      (l, s, samples) <- selectionManual
       let samples' = interference samples : samples
-      return (1, n, l, s, samples')
+      return (1, l, s, samples')
     "2" -> do
       putStrLn "Enter filename and filepath (if not in current directory) of a .wav file"
       putStr "$ "
       fileName <- getLine
-      (n, l, s, samples) <- readWavFile fileName
-      return (2, n, l, s, samples)
+      (l, s, samples) <- readWavFile fileName
+      return (2, l, s, samples)
     _ -> error "Wrong input"
 
-selectionManual :: IO (Int, Int, Int, [[Sample]])
+selectionManual :: IO (Int, Int, [[Sample]])
 selectionManual = do
   n <- genericInput "How many waves? "
   l <- genericInput "Enter length of waves: "
   s <- genericInput "Enter sampling rate: "
   samples <- getWaves (round n) l s
-  return (round n, round l, round s, samples)
+  return (round l, round s, samples)
 
 main :: IO ()
 main =
   do
-    (choice, n, l, s, samples) <- modeSelection
+    (choice, l, s, samples) <- modeSelection
     let freqs = extractFreqs dftArr
         dftArr = calcFFT (map snd (head samples)) s l choice
-        xCoords = map fst (head samples)
-        plots = [setSubplot (n - i) % plot xCoords (map snd w) | (i, w) <- zip [0 ..] samples]
+    samples' <- decompose dftArr (fromIntegral l :: Float) (fromIntegral s :: Float)
+    let n = length samples'
+        xCoords = map fst (head samples')
+        plots = [setSubplot (n - i) % plot xCoords (map snd w) | (i, w) <- zip [0 ..] samples']
         func = foldr (%) mp (reverse plots)
 
     onscreen $
@@ -176,9 +152,14 @@ main =
         % setSizeInches 10 8
         % setSubplot 0
         % title "Time Domain"
-        % plot xCoords (map snd (head samples))
+        % plot (map fst (head samples)) (map snd (head samples))
         @@ [o2 "linewidth" 0.5]
         % setSubplot 1
         % title "Frequency Domain"
         % plot (map fst dftArr) (map snd dftArr)
         @@ [o2 "linewidth" 1]
+
+    -- play the sound from the wave generated
+    wave <- generateSound (head samples) (maxBound `div` 2) 32 (length samples `div` l)
+    writeWavFile wave
+    playSound

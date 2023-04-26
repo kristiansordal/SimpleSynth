@@ -8,7 +8,6 @@ import Data.Maybe (fromMaybe)
 import Data.Void
 import Text.Megaparsec
 import Text.Megaparsec.Char
-import Text.Megaparsec.Char.Lexer hiding (float, space)
 import Wave
 
 type Parser = Parsec Void String
@@ -36,6 +35,7 @@ opTable =
     [ Prefix (string "sin" $> Sin),
       Prefix (string "cos" $> Cos)
     ],
+    [InfixL (string "^" $> Exp)],
     [ InfixL (string "*" $> Mult),
       InfixL (string "/" $> Div)
     ],
@@ -51,7 +51,7 @@ term :: Parser WaveExpr
 term = Lit <$> float <|> Var <$> string "x" <|> betweenParen waveExpression
 
 test = do
-  let x = runParser waveExpression "" "2x"
+  let x = runParser waveExpression "" "2^2*2^2"
   case x of
     Left err -> putStrLn (errorBundlePretty err)
     Right x' -> do

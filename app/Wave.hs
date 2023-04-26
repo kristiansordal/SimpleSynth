@@ -14,6 +14,7 @@ data WaveExpr
   | Sub WaveExpr WaveExpr
   | Mult WaveExpr WaveExpr
   | Div WaveExpr WaveExpr
+  | Exp WaveExpr WaveExpr
   | Cos WaveExpr
   | Sin WaveExpr
   deriving (Show, Read, Eq)
@@ -32,12 +33,6 @@ createWaveSample w len sampling = zip xCoords yCoords
     xCoords = [0.0, 1 / sampling .. len]
     yCoords = map (\x -> amplitude w * sin (2 * pi * frequency w * x + phase w) + translation w) xCoords
 
-createSampleParser :: (Float -> Float) -> Float -> Float -> [Sample]
-createSampleParser sinFunc len sampling = zip xCoords yCoords
-  where
-    xCoords = [0.0, 1 / sampling .. len]
-    yCoords = map sinFunc xCoords
-
 interference :: [[Sample]] -> [Sample]
 interference s = zip (map fst (head s)) yCoords
   where
@@ -49,6 +44,7 @@ eval (Var _) v = v
 eval (Add x y) v = eval x v + eval y v
 eval (Sub x y) v = eval x v - eval y v
 eval (Mult x y) v = eval x v * eval y v
+eval (Exp x y) v = eval x v ** eval y v
 eval (Div x y) v = eval x v / eval y v
 eval (Sin x) v = sin (2 * pi * eval x v)
 eval (Cos x) v = cos (2 * pi * eval x v)
