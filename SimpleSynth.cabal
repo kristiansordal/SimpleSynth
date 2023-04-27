@@ -21,7 +21,9 @@ executable SimpleSynth
     other-modules:    Wave,
                       Parser,
                       FFT,
-                      Sound
+                      Sound,
+                      Synthesizer,
+                      Utils
     -- other-extensions:
     build-depends:    base ^>=4.16.4.0,
                       mtl,

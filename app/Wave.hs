@@ -1,10 +1,15 @@
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
+{-# OPTIONS_GHC -Wno-type-defaults #-}
 {-# OPTIONS_GHC -Wno-unused-local-binds #-}
 
 module Wave where
 
 import Data.Fixed
 import Data.List
+
+type Mode = String
+
+type WaveState = (Float, Float, [[Sample]], String, Mode)
 
 type Sample = (Float, Float)
 
@@ -56,6 +61,30 @@ createWaveSample w len sampling = zip xCoords yCoords
   where
     xCoords = [0.0, 1 / sampling .. len]
     yCoords = map (\x -> amplitude w * sin (2 * pi * frequency w * x + phase w) + translation w) xCoords
+
+sinusoidWaveSample :: Float -> Float -> Float -> [Sample]
+sinusoidWaveSample freq len sampling = zip xCoords yCoords
+  where
+    xCoords = [0.0, 1 / sampling .. len]
+    yCoords = map (\x -> sin (2 * pi * x * freq)) xCoords
+
+sawtoothWaveSample :: Float -> Float -> Float -> [Sample]
+sawtoothWaveSample freq len sampling = zip xCoords yCoords
+  where
+    xCoords = [0.0, 1 / sampling .. len]
+    yCoords = map (\x -> 2 * (freq * x - fromIntegral (floor (1 / 2 + freq * x)))) xCoords
+
+triangleWaveSample :: Float -> Float -> Float -> [Sample]
+triangleWaveSample freq len sampling = zip xCoords yCoords
+  where
+    xCoords = [0.0, 1 / sampling .. len]
+    yCoords = map (\x -> (2 / pi) * asin (sin (freq * 2 * pi) * x)) xCoords
+
+squareWaveSample :: Float -> Float -> Float -> [Sample]
+squareWaveSample freq len sampling = zip xCoords yCoords
+  where
+    xCoords = [0.0, 1 / sampling .. len]
+    yCoords = map (\x -> signum (sin (2 * pi * freq * x))) xCoords
 
 interference :: [[Sample]] -> [Sample]
 interference s = zip (map fst (head s)) yCoords

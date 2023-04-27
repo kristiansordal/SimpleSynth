@@ -16,25 +16,10 @@ import System.IO
 import System.Process
 import System.Random
 import Text.Megaparsec hiding (State)
-import Text.Read hiding (get)
+import Utils
 import Wave
 
 type WaveInformation = (Int, Int, [[Sample]], String, Int)
-
-type Mode = String
-
-type WaveState = (Float, Float, [[Sample]], String, Mode)
-
--- Function for a generic input of a float / number with text
-genericInput :: String -> IO Float
-genericInput s = do
-  putStr s
-  input <- getLine
-  case (readMaybe input :: Maybe Float) of
-    Just num -> return num
-    Nothing -> do
-      putStrLn "Incorrect type, try again."
-      genericInput s
 
 addSample :: [Sample] -> StateT WaveState IO ()
 addSample newSample = do
@@ -45,10 +30,10 @@ addSample newSample = do
 inputWaveManual' :: StateT WaveState IO ()
 inputWaveManual' = do
   (l, s, _, _, _) <- get
-  freq <- liftIO $ genericInput "Enter wave frequency: "
-  amp <- liftIO $ genericInput "Enter wave amplitude: "
-  phase <- liftIO $ genericInput "Enter wave phase: "
-  trans <- liftIO $ genericInput "Enter waves translation: "
+  freq <- liftIO $ inputFloat "Enter wave frequency: "
+  amp <- liftIO $ inputFloat "Enter wave amplitude: "
+  phase <- liftIO $ inputFloat "Enter wave phase: "
+  trans <- liftIO $ inputFloat "Enter waves translation: "
   let w = Wave amp freq phase trans
   addSample (createWaveSample w l s)
 
@@ -95,7 +80,6 @@ getWaves' n =
       _ -> error "Wrong input."
     getWaves' (n - 1)
 
--- TODO: Error handling
 readWavFile :: StateT WaveState IO ()
 readWavFile = do
   (_, _, _, fileName, mode) <- get
@@ -134,16 +118,11 @@ modeSelection = do
 
 selectionManual :: StateT WaveState IO ()
 selectionManual = do
-  n <- liftIO $ genericInput "How many waves? "
-  l <- liftIO $ genericInput "Enter length of waves: "
-  s <- liftIO $ genericInput "Enter sampling rate: "
+  n <- liftIO $ inputFloat "How many waves? "
+  l <- liftIO $ inputFloat "Enter length of waves: "
+  s <- liftIO $ inputFloat "Enter sampling rate: "
   put (l, s, [], "", "")
   getWaves' (round n)
-
-main :: IO ()
-main = do
-  (l, s, samples, fileName, c) <- execStateT modeSelection (0, 0, [], "", "")
-  loop (round l, round s, samples, fileName, read c)
 
 loop :: WaveInformation -> IO ()
 loop (length, sampleRate, samples, fileName, c) = do
@@ -182,3 +161,8 @@ plotFigure samples fftArr = do
       % title "Frequency Domain"
       % plot xCoordsFFT yCoordsFFT
       @@ [o2 "linewidth" 1]
+
+main :: IO ()
+main = do
+  (l, s, samples, fileName, c) <- execStateT modeSelection (0, 0, [], "", "")
+  loop (round l, round s, samples, fileName, read c)
