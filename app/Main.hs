@@ -117,7 +117,10 @@ modeSelection = do
     "1" -> do
       (l, s, samples) <- selectionManual
       let samples' = interference samples : samples
-      return (1, l, s, samples', "wave.wav")
+      putStrLn "Store file as (default: wave.wav): "
+      putStr "$ "
+      fileName <- getLine
+      (if null fileName then return (1, l, s, samples', "wave.wav") else return (1, l, s, samples', fileName))
     "2" -> do
       putStrLn "Enter filename and filepath (if not in current directory) of a .wav file"
       putStr "$ "
@@ -137,9 +140,36 @@ selectionManual = do
 main :: IO ()
 main = do
   (choice, l, s, samples, fileName) <- modeSelection
-  let fftArr = calcFFT (map snd (head samples)) s l choice
-  samples' <- decompose fftArr (fromIntegral l :: Float) (fromIntegral s :: Float)
-  let n = length samples'
+  loop (choice, l, s, samples, fileName)
+
+-- let fftArr = calcFFT (map snd (head samples)) s l choice
+--     waves = decompose fftArr
+-- plotFigure samples fftArr
+
+-- -- play the sound from the wave generated
+-- wave <- generateSound (head samples) (maxBound `div` 10)
+-- writeWavFile wave fileName
+-- playSound ("wavfiles/" ++ fileName)
+
+-- loop :: WaveInformation -> IO ()
+loop (choice, length, sampleRate, samples, fileName) = do
+  let fftArr = calcFFT (map snd (head samples)) sampleRate length choice
+      waves = decompose fftArr
+  plotFigure samples fftArr
+
+  -- play the sound from the wave generated
+  wave <- generateSound (head samples) (maxBound `div` 10)
+  writeWavFile wave fileName
+  playSound ("wavfiles/" ++ fileName)
+
+  eq <- equalize waves
+  let samples' = map (\x -> createWaveSample x (fromIntegral length :: Float) (fromIntegral sampleRate :: Float)) eq
+      samples'' = interference samples' : samples'
+  loop (choice, length, sampleRate, samples'', fileName)
+
+plotFigure :: [[Sample]] -> [Sample] -> IO ()
+plotFigure samples fftArr = do
+  let waves = decompose fftArr
       xCoords = map fst (head samples)
       yCoords = map snd (head samples)
       xCoordsFFT = map fst fftArr
@@ -158,8 +188,3 @@ main = do
       % title "Frequency Domain"
       % plot xCoordsFFT yCoordsFFT
       @@ [o2 "linewidth" 1]
-
-  -- play the sound from the wave generated
-  wave <- generateSound (head samples) (maxBound `div` 2) 32 (length samples `div` l)
-  writeWavFile wave
-  playSound fileName

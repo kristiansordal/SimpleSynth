@@ -12,14 +12,14 @@ import Wave
 
 header = WAVEHeader 1 48000 32 Nothing
 
-generateSound :: [Sample] -> Int32 -> Int -> Int -> IO WAVE
-generateSound samples volume bitrate hz = do
+generateSound :: [Sample] -> Int32 -> IO WAVE
+generateSound samples volume = do
   return $ WAVE header (map (: []) sampleVol)
   where
     sampleVol = map (round . (* fromIntegral volume) . snd) samples :: [Int32]
 
-writeWavFile :: WAVE -> IO ()
-writeWavFile = putWAVEFile "wave.wav"
+writeWavFile :: WAVE -> String -> IO ()
+writeWavFile wave fileName = putWAVEFile ("wavfiles/" ++ fileName) wave
 
 whileTrueM :: Monad m => m Bool -> m ()
 whileTrueM cond = do

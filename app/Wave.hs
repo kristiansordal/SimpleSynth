@@ -5,14 +5,8 @@ module Wave where
 
 import Data.Fixed
 import Data.List
-import Data.Map (Map)
-import qualified Data.Map as Map
-import Data.Maybe
 
 type Sample = (Float, Float)
-
-variableState :: Map String Float
-variableState = Map.empty
 
 data WaveExpr
   = Lit Float
@@ -30,6 +24,24 @@ data WaveExpr
   | Floor WaveExpr
   | Signum WaveExpr
   deriving (Show, Read, Eq)
+
+eval :: WaveExpr -> Float -> Float
+eval (Lit x) _ = x
+eval (Var n) v
+  | n == "pi" = pi
+  | otherwise = v
+eval (Add x y) v = eval x v + eval y v
+eval (Sub x y) v = eval x v - eval y v
+eval (Mult x y) v = eval x v * eval y v
+eval (Exp x y) v = eval x v ** eval y v
+eval (Div x y) v = eval x v / eval y v
+eval (Sin x) v = sin (eval x v)
+eval (Cos x) v = cos (eval x v)
+eval (Asin x) v = asin (eval x v)
+eval (Acos x) v = acos (eval x v)
+eval (Mod x y) v = eval x v `mod'` eval y v
+eval (Floor x) v = fromIntegral $ floor (eval x v) :: Float
+eval (Signum x) v = signum (eval x v)
 
 data Wave = Wave
   { amplitude :: Float,
@@ -49,21 +61,3 @@ interference :: [[Sample]] -> [Sample]
 interference s = zip (map fst (head s)) yCoords
   where
     yCoords = map sum (transpose $ map (map snd) s)
-
-eval :: WaveExpr -> Float -> Float
-eval (Lit x) _ = x
-eval (Var n) v
-  | n == "pi" = pi
-  | otherwise = v
-eval (Add x y) v = eval x v + eval y v
-eval (Sub x y) v = eval x v - eval y v
-eval (Mult x y) v = eval x v * eval y v
-eval (Exp x y) v = eval x v ** eval y v
-eval (Div x y) v = eval x v / eval y v
-eval (Sin x) v = sin (2 * pi * eval x v)
-eval (Cos x) v = cos (2 * pi * eval x v)
-eval (Asin x) v = asin (eval x v)
-eval (Acos x) v = acos (eval x v)
-eval (Mod x y) v = eval x v `mod'` eval y v
-eval (Floor x) v = fromIntegral $ floor (eval x v) :: Float
-eval (Signum x) v = signum (eval x v)
