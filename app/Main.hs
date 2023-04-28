@@ -11,6 +11,7 @@ import FFT
 import Graphics.Matplotlib
 import Parser
 import Sound
+import Synthesizer
 import System.CPUTime
 import System.IO
 import System.Process
@@ -165,5 +166,16 @@ plotFigure samples fftArr = do
 
 main :: IO ()
 main = do
-  (l, s, samples, fileName, c) <- execStateT modeSelection (0, 0, [], "", "")
-  loop (round l, round s, samples, fileName, read c)
+  putStrLn "Please select what you want to do."
+  putStrLn "1: Perform FFT on, and equalize a wave and hear the sound it produces"
+  putStrLn "2: Use the synthesizer to create chord progressions and melodies"
+  putStr "$ "
+  choice <- getLine
+  case choice of
+    "1" -> do
+      (l, s, samples, fileName, c) <- execStateT modeSelection (0, 0, [], "", "")
+      loop (round l, round s, samples, fileName, read c)
+    "2" -> playSynth
+    _ -> do
+      putStrLn "Please select 1 or 2"
+      main
