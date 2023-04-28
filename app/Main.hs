@@ -27,8 +27,8 @@ addSample newSample = do
   put (l, s, samples ++ [newSample], fileName, mode)
 
 -- Create wave samples by manually entering the various fields of the wave
-inputWaveManual' :: StateT WaveState IO ()
-inputWaveManual' = do
+inputWaveManual :: StateT WaveState IO ()
+inputWaveManual = do
   (l, s, _, _, _) <- get
   freq <- liftIO $ inputFloat "Enter wave frequency: "
   amp <- liftIO $ inputFloat "Enter wave amplitude: "
@@ -38,8 +38,8 @@ inputWaveManual' = do
   addSample (createWaveSample w l s)
 
 -- Create wave based on a sum of sine and cosine functions
-inputWaveExpression' :: StateT WaveState IO ()
-inputWaveExpression' = do
+inputWaveExpression :: StateT WaveState IO ()
+inputWaveExpression = do
   (l, s, _, _, _) <- get
   liftIO $ putStrLn "Enter expression for wave: "
   input <- liftIO getLine
@@ -49,13 +49,13 @@ inputWaveExpression' = do
   case parsed of
     Left err -> do
       liftIO $ putStrLn (errorBundlePretty err)
-      inputWaveExpression'
+      inputWaveExpression
     Right x -> do
       let yCoords = map (eval x) xCoords
       addSample (zip xCoords yCoords)
 
-genRandomWave' :: StateT WaveState IO ()
-genRandomWave' = do
+genRandomWave :: StateT WaveState IO ()
+genRandomWave = do
   (s, l, _, _, _) <- get
   seed <- liftIO getCPUTime
   let gen = mkStdGen (fromIntegral seed)
@@ -63,9 +63,9 @@ genRandomWave' = do
       w = createWaveSample (Wave (head randNums) (randNums !! 1) (randNums !! 2) (randNums !! 3)) l s
   addSample w
 
-getWaves' :: Int -> StateT WaveState IO ()
-getWaves' 0 = return ()
-getWaves' n =
+getWaves :: Int -> StateT WaveState IO ()
+getWaves 0 = return ()
+getWaves n =
   do
     liftIO $ putStrLn "Select input mode: "
     liftIO $ putStrLn "1: Manual input"
@@ -74,11 +74,11 @@ getWaves' n =
     liftIO $ putStr "$ "
     c <- liftIO getLine
     case c of
-      "1" -> inputWaveManual'
-      "2" -> inputWaveExpression'
-      "3" -> genRandomWave'
+      "1" -> inputWaveManual
+      "2" -> inputWaveExpression
+      "3" -> genRandomWave
       _ -> error "Wrong input."
-    getWaves' (n - 1)
+    getWaves (n - 1)
 
 readWavFile :: StateT WaveState IO ()
 readWavFile = do
@@ -112,6 +112,7 @@ modeSelection = do
       liftIO $ putStr "$ "
       fileName <- liftIO getLine
       put (0, 0, [], fileName, "2")
+      readWavFile
     _ -> do
       liftIO $ putStrLn "Wrong input, please select either 1 or 2"
       modeSelection
@@ -122,7 +123,7 @@ selectionManual = do
   l <- liftIO $ inputFloat "Enter length of waves: "
   s <- liftIO $ inputFloat "Enter sampling rate: "
   put (l, s, [], "", "")
-  getWaves' (round n)
+  getWaves (round n)
 
 loop :: WaveInformation -> IO ()
 loop (length, sampleRate, samples, fileName, c) = do

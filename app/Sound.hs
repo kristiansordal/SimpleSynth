@@ -28,24 +28,25 @@ whileTrueM cond = do
 
 playSound :: String -> IO ()
 playSound file = do
-  -- open device
   Mix.openAudio def 256
 
-  -- open file
+  putStrLn "Loading file..."
   sound <- Mix.load file
 
-  -- play file
-  Mix.play sound
+  -- Mix.play sound
 
-  -- wait until finished
-  whileTrueM $ Mix.playing Mix.AllChannels
+  putStrLn "♫♫♫♫♫ sound playing ♫♫♫♫♫"
+  -- whileTrueM $ Mix.playing Mix.AllChannels
+  repeatSound sound
 
-  -- free resources
   Mix.free sound
 
-  -- close device
   Mix.closeAudio
 
-  -- quit
   Mix.quit
   SDL.quit
+
+repeatSound sound = do
+  Mix.play sound
+  whileTrueM $ Mix.playing Mix.AllChannels
+  repeatSound sound

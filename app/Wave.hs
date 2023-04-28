@@ -4,8 +4,8 @@
 
 module Wave where
 
-import Data.Fixed
-import Data.List
+import Data.Fixed (mod')
+import Data.List (transpose)
 
 type Mode = String
 
@@ -62,28 +62,28 @@ createWaveSample w len sampling = zip xCoords yCoords
     xCoords = [0.0, 1 / sampling .. len]
     yCoords = map (\x -> amplitude w * sin (2 * pi * frequency w * x + phase w) + translation w) xCoords
 
-sinusoidWaveSample :: Float -> Float -> Float -> [Sample]
-sinusoidWaveSample freq len sampling = zip xCoords yCoords
+sinusoidWaveSample :: Float -> Float -> Float -> Float -> [Sample]
+sinusoidWaveSample start freq len sampling = zip xCoords yCoords
   where
-    xCoords = [0.0, 1 / sampling .. len]
+    xCoords = [start, start + 1 / sampling .. start + len]
     yCoords = map (\x -> sin (2 * pi * x * freq)) xCoords
 
-sawtoothWaveSample :: Float -> Float -> Float -> [Sample]
-sawtoothWaveSample freq len sampling = zip xCoords yCoords
+sawtoothWaveSample :: Float -> Float -> Float -> Float -> [Sample]
+sawtoothWaveSample start freq len sampling = zip xCoords yCoords
   where
-    xCoords = [0.0, 1 / sampling .. len]
+    xCoords = [start, start + 1 / sampling .. start + len]
     yCoords = map (\x -> 2 * (freq * x - fromIntegral (floor (1 / 2 + freq * x)))) xCoords
 
-triangleWaveSample :: Float -> Float -> Float -> [Sample]
-triangleWaveSample freq len sampling = zip xCoords yCoords
+triangleWaveSample :: Float -> Float -> Float -> Float -> [Sample]
+triangleWaveSample start freq len sampling = zip xCoords yCoords
   where
-    xCoords = [0.0, 1 / sampling .. len]
+    xCoords = [start, start + 1 / sampling .. start + len]
     yCoords = map (\x -> (2 / pi) * asin (sin (freq * 2 * pi) * x)) xCoords
 
-squareWaveSample :: Float -> Float -> Float -> [Sample]
-squareWaveSample freq len sampling = zip xCoords yCoords
+squareWaveSample :: Float -> Float -> Float -> Float -> [Sample]
+squareWaveSample start freq len sampling = zip xCoords yCoords
   where
-    xCoords = [0.0, 1 / sampling .. len]
+    xCoords = [start, start + 1 / sampling .. start + len]
     yCoords = map (\x -> signum (sin (2 * pi * freq * x))) xCoords
 
 interference :: [[Sample]] -> [Sample]

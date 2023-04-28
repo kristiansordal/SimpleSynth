@@ -3,9 +3,10 @@
 module Synthesizer where
 
 import Control.Monad.State
+import Data.List
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Parser
+import Main
 import Sound
 import Utils
 import Wave
@@ -23,9 +24,9 @@ data Oscillator
   | Sawtooth {sample :: [Sample]}
   | Triangle {sample :: [Sample]}
   | Square {sample :: [Sample]}
-  deriving (Show)
+  deriving (Show, Eq)
 
-type SynthState = (BPM, Beats, [Oscillator], [Frequency], [[Sample]])
+type SynthState = (BPM, Beats, [Oscillator], [Frequency], [[Sample]], [[Sample]])
 
 sampleRate :: Float
 sampleRate = 48000
@@ -33,159 +34,159 @@ sampleRate = 48000
 notes :: Map Note Frequency
 notes =
   Map.fromList
-    [ ("C0", 6.35),
+    [ ("C0", 16.35),
       ("C#0", 17.32),
-      ("Db0", 1.32),
-      ("D0", 8.35),
+      ("Db0", 17.32),
+      ("D0", 18.35),
       ("D#0", 19.45),
-      ("Eb0", 1.45),
-      ("E0", 0.60),
-      ("F0", 1.83),
+      ("Eb0", 19.45),
+      ("E0", 20.60),
+      ("F0", 21.83),
       ("F#0", 23.12),
-      ("Gb0", 3.12),
-      ("G0", 4.50),
+      ("Gb0", 23.12),
+      ("G0", 24.50),
       ("G#0", 25.96),
-      ("Ab0", 5.96),
-      ("A0", 7.50),
+      ("Ab0", 25.96),
+      ("A0", 27.50),
       ("A#0", 29.14),
-      ("Bb0", 9.14),
-      ("B0", 0.87),
-      ("C1", 2.70),
+      ("Bb0", 29.14),
+      ("B0", 30.87),
+      ("C1", 32.70),
       ("C#1", 34.65),
-      ("Db1", 4.65),
-      ("D1", 6.71),
+      ("Db1", 34.65),
+      ("D1", 36.71),
       ("D#1", 38.89),
-      ("Eb1", 8.89),
-      ("E1", 1.20),
-      ("F1", 3.65),
+      ("Eb1", 38.89),
+      ("E1", 41.20),
+      ("F1", 43.65),
       ("F#1", 46.25),
-      ("Gb1", 6.25),
-      ("G1", 9.00),
+      ("Gb1", 46.25),
+      ("G1", 49.00),
       ("G#1", 51.91),
-      ("Ab1", 1.91),
-      ("A1", 5.00),
+      ("Ab1", 51.91),
+      ("A1", 55.00),
       ("A#1", 58.27),
-      ("Bb1", 8.27),
-      ("B1", 1.74),
-      ("C2", 5.41),
+      ("Bb1", 58.27),
+      ("B1", 61.74),
+      ("C2", 65.41),
       ("C#2", 69.30),
-      ("Db2", 9.30),
-      ("D2", 3.42),
+      ("Db2", 69.30),
+      ("D2", 73.42),
       ("D#2", 77.78),
-      ("Eb2", 7.78),
-      ("E2", 2.41),
-      ("F2", 7.31),
+      ("Eb2", 77.78),
+      ("E2", 82.41),
+      ("F2", 87.31),
       ("F#2", 92.50),
-      ("Gb2", 2.50),
-      ("G2", 8.00),
+      ("Gb2", 92.50),
+      ("G2", 98.00),
       ("G#2", 103.83),
-      ("Ab2", 13.83),
-      ("A2", 10.00),
+      ("Ab2", 103.83),
+      ("A2", 110.00),
       ("A#2", 116.54),
-      ("Bb2", 16.54),
-      ("B2", 23.47),
-      ("C3", 30.81),
+      ("Bb2", 116.54),
+      ("B2", 123.47),
+      ("C3", 130.81),
       ("C#3", 138.59),
-      ("Db3", 18.59),
-      ("D3", 46.83),
+      ("Db3", 138.59),
+      ("D3", 146.83),
       ("D#3", 155.56),
-      ("Eb3", 15.56),
-      ("E3", 64.81),
-      ("F3", 74.61),
+      ("Eb3", 155.56),
+      ("E3", 164.81),
+      ("F3", 174.61),
       ("F#3", 185.00),
-      ("Gb3", 15.00),
-      ("G3", 96.00),
+      ("Gb3", 185.00),
+      ("G3", 196.00),
       ("G#3", 207.65),
-      ("Ab3", 27.65),
-      ("A3", 20.00),
+      ("Ab3", 207.65),
+      ("A3", 220.00),
       ("A#3", 233.08),
-      ("Bb3", 23.08),
-      ("B3", 46.94),
-      ("C4", 61.63),
+      ("Bb3", 233.08),
+      ("B3", 246.94),
+      ("C4", 261.63),
       ("C#4", 277.18),
-      ("Db4", 27.18),
-      ("D4", 93.66),
+      ("Db4", 277.18),
+      ("D4", 293.66),
       ("D#4", 311.13),
-      ("Eb4", 31.13),
-      ("E4", 29.63),
-      ("F4", 49.23),
+      ("Eb4", 311.13),
+      ("E4", 329.63),
+      ("F4", 349.23),
       ("F#4", 369.99),
-      ("Gb4", 39.99),
-      ("G4", 92.00),
+      ("Gb4", 369.99),
+      ("G4", 392.00),
       ("G#4", 415.30),
-      ("Ab4", 45.30),
-      ("A4", 40.00),
+      ("Ab4", 415.30),
+      ("A4", 440.00),
       ("A#4", 466.16),
       ("Bb4", 466.16),
-      ("B4", 93.88),
-      ("C5", 23.25),
+      ("B4", 493.88),
+      ("C5", 523.25),
       ("C#5", 554.37),
       ("Db5", 554.37),
-      ("D5", 87.33),
+      ("D5", 587.33),
       ("D#5", 622.25),
       ("Eb5", 622.25),
-      ("F5", 98.46),
-      ("E5", 59.25),
+      ("E5", 659.25),
+      ("F5", 698.46),
       ("F#5", 739.99),
       ("Gb5", 739.99),
-      ("G5", 83.99),
+      ("G5", 783.99),
       ("G#5", 830.61),
       ("Ab5", 830.61),
-      ("A5", 80.00),
+      ("A5", 880.00),
       ("A#5", 932.33),
       ("Bb5", 932.33),
-      ("B5", 87.77),
-      ("C6", 046.50),
+      ("B5", 987.77),
+      ("C6", 1046.50),
       ("C#6", 1108.73),
-      ("Db6", 1108.73),
-      ("D6", 174.66),
+      ("Db6", 108.73),
+      ("D6", 1174.66),
       ("D#6", 1244.51),
-      ("Eb6", 1244.51),
-      ("E6", 318.51),
-      ("F6", 396.91),
+      ("Eb6", 244.51),
+      ("E6", 1318.51),
+      ("F6", 1396.91),
       ("F#6", 1479.98),
-      ("Gb6", 1479.98),
-      ("G6", 567.98),
+      ("Gb6", 479.98),
+      ("G6", 1567.98),
       ("G#6", 1661.22),
-      ("Ab6", 1661.22),
-      ("A6", 760.00),
+      ("Ab6", 661.22),
+      ("A6", 1760.00),
       ("A#6", 1864.66),
-      ("Bb6", 1864.66),
-      ("B6", 975.53),
-      ("C7", 093.00),
+      ("Bb6", 864.66),
+      ("B6", 1975.53),
+      ("C7", 2093.00),
       ("C#7", 2217.46),
-      ("Db7", 2217.46),
-      ("D7", 349.32),
+      ("Db7", 217.46),
+      ("D7", 2349.32),
       ("D#7", 2489.02),
-      ("Eb7", 2489.02),
-      ("E7", 637.02),
-      ("F7", 793.83),
+      ("Eb7", 489.02),
+      ("E7", 2637.02),
+      ("F7", 2793.83),
       ("F#7", 2959.96),
-      ("Gb7", 2959.96),
-      ("G7", 135.96),
+      ("Gb7", 959.96),
+      ("G7", 3135.96),
       ("G#7", 3322.44),
-      ("Ab7", 3322.44),
-      ("A7", 520.00),
+      ("Ab7", 322.44),
+      ("A7", 3520.00),
       ("A#7", 3729.31),
-      ("Bb7", 3729.31),
-      ("B7", 951.07),
-      ("C8", 186.01),
+      ("Bb7", 729.31),
+      ("B7", 3951.07),
+      ("C8", 4186.01),
       ("C#8", 4434.92),
-      ("Db8", 4434.92),
-      ("D8", 698.63),
+      ("Db8", 434.92),
+      ("D8", 4698.63),
       ("D#8", 4978.03),
-      ("Eb8", 4978.03),
-      ("E8", 274.04),
-      ("F8", 587.65),
+      ("Eb8", 978.03),
+      ("E8", 5274.04),
+      ("F8", 5587.65),
       ("F#8", 5919.91),
-      ("Gb8", 5919.91),
-      ("G8", 271.93),
+      ("Gb8", 919.91),
+      ("G8", 6271.93),
       ("G#8", 6644.88),
-      ("Ab8", 6644.88),
-      ("A8", 040.00),
+      ("Ab8", 644.88),
+      ("A8", 7040.00),
       ("A#8", 7458.62),
-      ("Bb8", 7458.62),
-      ("B8", 902.13)
+      ("Bb8", 458.62),
+      ("B8", 7902.13)
     ]
 
 synthesize :: StateT SynthState IO ()
@@ -201,7 +202,7 @@ synthesize = do
   putStrLn' ""
   putStr' "Select BPM: "
   bpm <- liftIO getLine
-  put (read bpm, 0, [], [], [])
+  put (read bpm, 0, [], [], [], [])
   synthLoop
 
 initSynthLoop :: StateT SynthState IO ()
@@ -211,34 +212,34 @@ initSynthLoop = do
   ans <- liftIO getLine
   case ans of
     "y" -> synthLoop
-    "n" -> do return ()
-    -- (bpm, beats, osc, notes, samples) <- get
-    -- putStrLn' "Goodbye"
-    -- put (bpm, beats, osc, notes, samples)
+    "n" -> do
+      (bpm, beats, osc, notes, samples, noteSamples) <- get
+      putStrLn' "Goodbye"
+      put (bpm, beats, osc, notes, samples, noteSamples)
     _ -> do
       putStrLn' "Wrong input, please select either (y / n)"
       initSynthLoop
 
 synthLoop :: StateT SynthState IO ()
 synthLoop = do
-  (bpm, _, _, _, _) <- get
   putStrLn' "Enter the amount of beats"
   putStr' "$ "
   beats <- liftIO getLine
   putStrLn' "Enter the number of oscillators"
   putStr' "$ "
   noOscs <- liftIO getLine
-  put (bpm, read beats, [], [], [])
+  modify (\(bpm, _, osc, nts, samps, ns) -> (bpm, read beats, osc, nts, samps, ns))
   getOscillators (read noOscs)
-
-getOscillators :: Int -> StateT SynthState IO ()
-getOscillators 0 = do
   putStrLn' "Select amount of notes to be played"
   putStr' "$ "
   noNotes <- liftIO getLine
   getNotes (read noNotes)
+  generateOscillatorSamples
+
+getOscillators :: Int -> StateT SynthState IO ()
+getOscillators 0 = return ()
 getOscillators x = do
-  (bpm, beats, oscillators, notes, samples) <- get
+  (bpm, beats, oscillators, notes, samples, noteSamples) <- get
   putStrLn' "Please select oscillator type"
   putStrLn' "1: Sinusoid"
   putStrLn' "2: Sawtooth"
@@ -248,30 +249,28 @@ getOscillators x = do
   osc <- liftIO getLine
   case osc of
     "1" -> do
-      put (bpm, beats, oscillators ++ [Sinusoid []], notes, samples)
-      getOscillators (x - 1)
+      put (bpm, beats, nub $ oscillators ++ [Sinusoid []], notes, samples, noteSamples)
     "2" -> do
-      put (bpm, beats, oscillators ++ [Sawtooth []], notes, samples)
-      getOscillators (x - 1)
+      put (bpm, beats, nub $ oscillators ++ [Sawtooth []], notes, samples, noteSamples)
     "3" -> do
-      put (bpm, beats, oscillators ++ [Triangle []], notes, samples)
-      getOscillators (x - 1)
+      put (bpm, beats, nub $ oscillators ++ [Triangle []], notes, samples, noteSamples)
     "4" -> do
-      put (bpm, beats, oscillators ++ [Square []], notes, samples)
-      getOscillators (x - 1)
+      put (bpm, beats, nub $ oscillators ++ [Square []], notes, samples, noteSamples)
     _ -> do
       liftIO $ putStrLn "Please select a number 1-4"
       getOscillators x
+  getOscillators (x - 1)
 
 getNotes :: Int -> StateT SynthState IO ()
-getNotes 0 = generateOscillatorSamples
+getNotes 0 = return ()
 getNotes x = do
   putStrLn' "Pick a note"
   putStr' "$ "
   note <- liftIO getLine
   case Map.lookup note notes of
     Just n -> do
-      modify (\(bpm, beats, oscillators, notes, samples) -> (bpm, beats, oscillators, notes ++ [n], samples))
+      (bpm, beats, oscillators, notes, samples, noteSamples) <- get
+      put (bpm, beats, oscillators, notes ++ [n], samples, noteSamples)
       getNotes (x - 1)
     Nothing -> do
       putStrLn' "Invalid note, try again."
@@ -279,27 +278,69 @@ getNotes x = do
 
 generateOscillatorSamples :: StateT SynthState IO ()
 generateOscillatorSamples = do
-  (bpm, beats, oscillators, notes, samples) <- get
+  (bpm, beats, oscillators, notes, samples, noteSamples) <- get
   if null notes
-    then do initSynthLoop
+    then do
+      putStrLn' $ show $ length noteSamples
+      put (bpm, beats, [], notes, samples ++ [interference noteSamples], [])
+      initSynthLoop
     else do
-      let oscWithSample = map (oscillatorSample bpm beats (head notes)) oscillators
-          interferenceOsc = map sample oscWithSample
-      put (bpm, beats, oscillators, drop 1 notes, init samples ++ [interference (interferenceOsc ++ [last samples])])
-  generateOscillatorSamples
+      let start = getStart samples
+          oscWithSample = map (oscillatorSample start bpm beats (head notes)) oscillators
+          interferenceOscillators = interference $ map sample oscWithSample
+      if null noteSamples
+        then do
+          put (bpm, beats, oscillators, drop 1 notes, samples, [interferenceOscillators])
+        else do
+          put (bpm, beats, oscillators, drop 1 notes, samples, interferenceOscillators : noteSamples)
+      generateOscillatorSamples
 
-oscillatorSample :: BPM -> Beats -> Frequency -> Oscillator -> Oscillator
-oscillatorSample bpm beats freq (Sinusoid _) = Sinusoid (sinusoidWaveSample freq ((60 / fromIntegral bpm) * fromIntegral beats) sampleRate)
-oscillatorSample bpm beats freq (Sawtooth _) = Sawtooth (sawtoothWaveSample freq ((60 / fromIntegral bpm) * fromIntegral beats) sampleRate)
-oscillatorSample bpm beats freq (Triangle _) = Triangle (triangleWaveSample freq ((60 / fromIntegral bpm) * fromIntegral beats) sampleRate)
-oscillatorSample bpm beats freq (Square _) = Square (squareWaveSample freq ((60 / fromIntegral bpm) * fromIntegral beats) sampleRate)
+oscillatorSample :: Float -> BPM -> Beats -> Frequency -> Oscillator -> Oscillator
+oscillatorSample start bpm beats freq (Sinusoid _) =
+  Sinusoid
+    ( sinusoidWaveSample
+        start
+        freq
+        ((60 / fromIntegral bpm) * fromIntegral beats)
+        sampleRate
+    )
+oscillatorSample start bpm beats freq (Sawtooth _) =
+  Sawtooth
+    ( sawtoothWaveSample
+        start
+        freq
+        ((60 / fromIntegral bpm) * fromIntegral beats)
+        sampleRate
+    )
+oscillatorSample start bpm beats freq (Triangle _) =
+  Triangle
+    ( triangleWaveSample
+        start
+        freq
+        ((60 / fromIntegral bpm) * fromIntegral beats)
+        sampleRate
+    )
+oscillatorSample start bpm beats freq (Square _) =
+  Square
+    ( squareWaveSample
+        start
+        freq
+        ((60 / fromIntegral bpm) * fromIntegral beats)
+        sampleRate
+    )
+
+getStart :: [[Sample]] -> Float
+getStart [] = 0
+getStart [x] = fst $ last x
+getStart xs = fst $ last $ last xs
 
 playSynth :: IO ()
 playSynth = do
-  (_, _, _, _, samples) <- execStateT synthesize (0, 0, [], [], [])
+  (_, _, _, _, samples, _) <- execStateT synthesize (0, 0, [], [], [], [])
   putStrLn "Save file as:"
   putStr "$ "
   fileName <- getLine
   sound <- generateSound (concat samples) (maxBound `div` 10)
   writeWavFile sound fileName
-  playSound fileName
+  plotFigure samples (concat samples)
+  playSound ("wavfiles/" ++ fileName)
