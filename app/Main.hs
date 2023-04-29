@@ -7,14 +7,13 @@
 module Main where
 
 import Control.Monad.State
+import Data.WAVE
 import FFT
 import Graphics.Matplotlib
 import Parser
 import Sound
 import Synthesizer
 import System.CPUTime
-import System.IO
-import System.Process
 import System.Random
 import Text.Megaparsec hiding (State)
 import Utils
@@ -84,11 +83,17 @@ getWaves n =
 readWavFile :: StateT WaveState IO ()
 readWavFile = do
   (_, _, _, fileName, mode) <- get
-  (_, Just hout, _, _) <- liftIO $ createProcess (proc "python3" ["wavreader.py", fileName]) {std_out = CreatePipe}
-  h <- lines <$> liftIO (hGetContents hout)
-  let sampleRate = read (head h) :: Int
-      sineWave = zip [0 ..] (read (last h) :: [Float])
-  put (fromIntegral $ length sineWave, fromIntegral sampleRate, [sineWave], fileName, mode)
+  wave <- liftIO $ getWAVEFile ("wavfiles/" ++ fileName)
+  let (samples, sampleRate) = processWaveFile wave
+
+  put (fromIntegral $ length samples, fromIntegral sampleRate, [samples], fileName, mode)
+
+processWaveFile :: WAVE -> ([Sample], Int)
+processWaveFile (WAVE header samples) = (zip xCoords yCoords', waveFrameRate header)
+  where
+    yCoords = map sampleToDouble $ concat samples
+    yCoords' = map (\x -> realToFrac x :: Float) yCoords
+    xCoords = [0.0, 1 / fromIntegral (waveFrameRate header) ..]
 
 modeSelection :: StateT WaveState IO ()
 modeSelection = do
@@ -134,8 +139,13 @@ loop (length, sampleRate, samples, fileName, c) = do
 
   -- play the sound from the wave generated
   wave <- generateSound (head samples) (maxBound `div` 10)
-  writeWavFile wave fileName
-  playSound ("wavfiles/" ++ fileName)
+  case c of
+    1 -> do
+      writeWavFile wave fileName
+      playSound ("wavfiles/" ++ fileName)
+    2 -> do
+      playSound ("wavfiles/" ++ fileName)
+    _ -> error "Wrong choice"
 
   eq <- equalize waves
   let samples' = map (\x -> createWaveSample x (fromIntegral length :: Float) (fromIntegral sampleRate :: Float)) eq

@@ -4,11 +4,13 @@ import Control.Monad.State
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Text.Read
+import Wave (Sample)
 
 -- Function for a generic input of a float / number with text
 inputFloat :: String -> IO Float
 inputFloat s = do
-  putStr s
+  putStrLn s
+  putStr "$ "
   input <- getLine
   case (readMaybe input :: Maybe Float) of
     Just num -> return num
@@ -20,14 +22,21 @@ putStrLn' s = liftIO $ putStrLn s
 
 putStr' s = liftIO $ putStr s
 
+getStart :: [[Sample]] -> Float
+getStart [] = 0
+getStart [x] = fst $ last x
+getStart xs = fst $ last $ last xs
+
 type Frequency = Float
 
 type Note = String
 
+-- Lookup-table for note frequencies
 notes :: Map Note Frequency
 notes =
   Map.fromList
-    [ ("C0", 16.35),
+    [ ("0", 0),
+      ("C0", 16.35),
       ("C#0", 17.32),
       ("Db0", 17.32),
       ("D0", 18.35),
@@ -131,10 +140,10 @@ notes =
       ("B5", 987.77),
       ("C6", 1046.50),
       ("C#6", 1108.73),
-      ("Db6", 108.73),
+      ("Db6", 1108.73),
       ("D6", 1174.66),
       ("D#6", 1244.51),
-      ("Eb6", 244.51),
+      ("Eb6", 1244.51),
       ("E6", 1318.51),
       ("F6", 1396.91),
       ("F#6", 1479.98),
@@ -144,7 +153,7 @@ notes =
       ("Ab6", 661.22),
       ("A6", 1760.00),
       ("A#6", 1864.66),
-      ("Bb6", 864.66),
+      ("Bb6", 1864.66),
       ("B6", 1975.53),
       ("C7", 2093.00),
       ("C#7", 2217.46),

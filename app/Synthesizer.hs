@@ -3,16 +3,26 @@
 module Synthesizer where
 
 import Control.Monad.State
-import Data.List
+import Data.List (nub)
 import qualified Data.Map as Map
-import Sound
+import Sound (generateSound, repeatSound, writeWavFile)
 import Utils
 import Wave
+  ( Sample,
+    interference,
+    sawtoothWaveSample,
+    sinusoidWaveSample,
+    squareWaveSample,
+    triangleWaveSample,
+  )
 
 type BPM = Integer
 
-type Beats = Integer
+type Beats = Float
 
+-- Data type for the available oscillators.
+-- They have a list of samples, which is used to generate the interferrence
+-- of several oscillators
 data Oscillator
   = Sinusoid {sample :: [Sample]}
   | Sawtooth {sample :: [Sample]}
@@ -20,6 +30,14 @@ data Oscillator
   | Square {sample :: [Sample]}
   deriving (Show, Eq)
 
+-- This is the state of the Synthesizer
+-- BPM - The beats per minute of the sound generated
+-- Beats - How many beats the current notes being created should span
+-- [Oscillator] - Which oscillators are currently being used
+-- [Frequency] - The frequencies of the notes for the current span of beats
+-- [[Sample]]_1 - The samples of the melody so far
+-- [[Sample]]_2 - The samples of the notes in the current span - These are interferred and added to [[Sample]]_1
+-- after the list of notes are exhausted
 type SynthState = (BPM, Beats, [Oscillator], [Frequency], [[Sample]], [[Sample]])
 
 sampleRate :: Float
@@ -36,11 +54,11 @@ synthesize = do
   putStrLn' "6: Go to step 2, the new notes will be appended."
   putStrLn' "7: Finished! The soundbyte generated will now be played"
   putStrLn' ""
-  putStr' "Select BPM: "
-  bpm <- liftIO getLine
-  put (read bpm, 0, [], [], [], [])
+  bpm <- liftIO $ inputFloat "Select BPM: "
+  put (round bpm, 0, [], [], [], [])
   synthLoop
 
+-- Initialize a new synthloop
 initSynthLoop :: StateT SynthState IO ()
 initSynthLoop = do
   putStrLn' "Continue adding to the melody? (y / n)"
@@ -50,32 +68,31 @@ initSynthLoop = do
     "y" -> synthLoop
     "n" -> do
       (bpm, beats, osc, notes, samples, noteSamples) <- get
-      putStrLn' "Goodbye"
       put (bpm, beats, osc, notes, samples, noteSamples)
     _ -> do
       putStrLn' "Wrong input, please select either (y / n)"
       initSynthLoop
 
+-- Get the number of beats, oscillators and notes
 synthLoop :: StateT SynthState IO ()
 synthLoop = do
-  putStrLn' "Enter the amount of beats"
-  putStr' "$ "
-  beats <- liftIO getLine
-  putStrLn' "Enter the number of oscillators"
-  putStr' "$ "
-  noOscs <- liftIO getLine
-  modify (\(bpm, _, osc, nts, samps, ns) -> (bpm, read beats, osc, nts, samps, ns))
-  getOscillators (read noOscs)
-  putStrLn' "Select amount of notes to be played"
-  putStr' "$ "
-  noNotes <- liftIO getLine
-  getNotes (read noNotes)
+  beats <- liftIO $ inputFloat "Enter the amount of beats"
+  noOscs <- liftIO $ inputFloat "Enter the number of oscillators"
+
+  modify (\(bpm, _, osc, nts, samps, ns) -> (bpm, beats, osc, nts, samps, ns))
+  getOscillators (round noOscs)
+
+  noNotes <- liftIO $ inputFloat "Select amount of notes to be played"
+  getNotes (round noNotes)
+
   generateOscillatorSamples
 
+-- Get the type of oscillator
 getOscillators :: Int -> StateT SynthState IO ()
 getOscillators 0 = return ()
 getOscillators x = do
   (bpm, beats, oscillators, notes, samples, noteSamples) <- get
+
   putStrLn' "Please select oscillator type"
   putStrLn' "1: Sinusoid"
   putStrLn' "2: Sawtooth"
@@ -83,6 +100,9 @@ getOscillators x = do
   putStrLn' "4: Square"
   putStr' "$ "
   osc <- liftIO getLine
+
+  -- Duplicate oscillators are removed with nub, as using multiple oscillators of the same type
+  -- won't make a difference in sound and hurts performance.
   case osc of
     "1" -> do
       put (bpm, beats, nub $ oscillators ++ [Sinusoid []], notes, samples, noteSamples)
@@ -95,8 +115,10 @@ getOscillators x = do
     _ -> do
       liftIO $ putStrLn "Please select a number 1-4"
       getOscillators x
+
   getOscillators (x - 1)
 
+-- Gets the frequencies of notes from the lookup table in Utils
 getNotes :: Int -> StateT SynthState IO ()
 getNotes 0 = return ()
 getNotes x = do
@@ -112,63 +134,44 @@ getNotes x = do
       putStrLn' "Invalid note, try again."
       getNotes x
 
+-- Generates samples for each oscillator and interfers them
 generateOscillatorSamples :: StateT SynthState IO ()
 generateOscillatorSamples = do
   (bpm, beats, oscillators, notes, samples, noteSamples) <- get
+  putStrLn' $ show $ length noteSamples
   if null notes
     then do
-      putStrLn' $ show $ length noteSamples
-      put (bpm, beats, [], notes, samples ++ [interference noteSamples], [])
+      -- When we have created samples for all the notes, we update the state by
+      -- appending the interferrence of these notes to the samples we have.
+      -- We also clear the note sample list to prime it for new note samples to be
+      -- created
+      put (bpm, beats, [], [], samples ++ [interference noteSamples], [])
+      putStrLn' $ show (length samples)
       initSynthLoop
     else do
+      -- As the samples are coordinate based, the start of the new samples need to pick up
+      -- where the previous left off
       let start = getStart samples
+
+          -- Generate the samples for each of the oscillators at the given note
           oscWithSample = map (oscillatorSample start bpm beats (head notes)) oscillators
+
+          -- Interfer the samples to create the sound of both oscillators playing the note at the same time
           interferenceOscillators = interference $ map sample oscWithSample
+
       if null noteSamples
         then do
           put (bpm, beats, oscillators, drop 1 notes, samples, [interferenceOscillators])
+          generateOscillatorSamples
         else do
           put (bpm, beats, oscillators, drop 1 notes, samples, interferenceOscillators : noteSamples)
-      generateOscillatorSamples
+          generateOscillatorSamples
 
 oscillatorSample :: Float -> BPM -> Beats -> Frequency -> Oscillator -> Oscillator
-oscillatorSample start bpm beats freq (Sinusoid _) =
-  Sinusoid
-    ( sinusoidWaveSample
-        start
-        freq
-        ((60 / fromIntegral bpm) * fromIntegral beats)
-        sampleRate
-    )
-oscillatorSample start bpm beats freq (Sawtooth _) =
-  Sawtooth
-    ( sawtoothWaveSample
-        start
-        freq
-        ((60 / fromIntegral bpm) * fromIntegral beats)
-        sampleRate
-    )
-oscillatorSample start bpm beats freq (Triangle _) =
-  Triangle
-    ( triangleWaveSample
-        start
-        freq
-        ((60 / fromIntegral bpm) * fromIntegral beats)
-        sampleRate
-    )
-oscillatorSample start bpm beats freq (Square _) =
-  Square
-    ( squareWaveSample
-        start
-        freq
-        ((60 / fromIntegral bpm) * fromIntegral beats)
-        sampleRate
-    )
-
-getStart :: [[Sample]] -> Float
-getStart [] = 0
-getStart [x] = fst $ last x
-getStart xs = fst $ last $ last xs
+oscillatorSample start bpm beats freq (Sinusoid _) = Sinusoid (sinusoidWaveSample start freq ((60 / fromIntegral bpm) * beats) sampleRate)
+oscillatorSample start bpm beats freq (Sawtooth _) = Sawtooth (sawtoothWaveSample start freq ((60 / fromIntegral bpm) * beats) sampleRate)
+oscillatorSample start bpm beats freq (Triangle _) = Triangle (triangleWaveSample start freq ((60 / fromIntegral bpm) * beats) sampleRate)
+oscillatorSample start bpm beats freq (Square _) = Square (squareWaveSample start freq ((60 / fromIntegral bpm) * beats) sampleRate)
 
 playSynth :: IO ()
 playSynth = do
@@ -178,4 +181,4 @@ playSynth = do
   fileName <- getLine
   sound <- generateSound (concat samples) (maxBound `div` 10)
   writeWavFile sound fileName
-  playSound ("wavfiles/" ++ fileName)
+  repeatSound ("wavfiles/" ++ fileName)

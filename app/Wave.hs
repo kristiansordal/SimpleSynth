@@ -78,7 +78,8 @@ triangleWaveSample :: Float -> Float -> Float -> Float -> [Sample]
 triangleWaveSample start freq len sampling = zip xCoords yCoords
   where
     xCoords = [start, start + 1 / sampling .. start + len]
-    yCoords = map (\x -> (2 / pi) * asin (sin (freq * 2 * pi) * x)) xCoords
+    -- yCoords = map (\x -> 4 * freq * abs ((x - 4 / freq) `mod'` (1 / freq) - 2 / freq)) xCoords
+    yCoords = map (\x -> 2 * abs (2 * (freq * x - fromIntegral (floor (1 / 2 + freq * x)))) - 1) xCoords
 
 squareWaveSample :: Float -> Float -> Float -> Float -> [Sample]
 squareWaveSample start freq len sampling = zip xCoords yCoords

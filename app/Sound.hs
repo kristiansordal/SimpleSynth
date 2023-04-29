@@ -33,11 +33,10 @@ playSound file = do
   putStrLn "Loading file..."
   sound <- Mix.load file
 
-  -- Mix.play sound
+  Mix.play sound
 
   putStrLn "♫♫♫♫♫ sound playing ♫♫♫♫♫"
-  -- whileTrueM $ Mix.playing Mix.AllChannels
-  repeatSound sound
+  whileTrueM $ Mix.playing Mix.AllChannels
 
   Mix.free sound
 
@@ -46,7 +45,24 @@ playSound file = do
   Mix.quit
   SDL.quit
 
-repeatSound sound = do
+repeatSound :: String -> IO ()
+repeatSound file = do
+  Mix.openAudio def 256
+
+  putStrLn "Loading file..."
+  sound <- Mix.load file
+
+  putStrLn "♫♫♫♫♫ sound playing ♫♫♫♫♫"
+  playAgain sound
+
+  Mix.free sound
+
+  Mix.closeAudio
+
+  Mix.quit
+  SDL.quit
+
+playAgain sound = do
   Mix.play sound
   whileTrueM $ Mix.playing Mix.AllChannels
-  repeatSound sound
+  playAgain sound
