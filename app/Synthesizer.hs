@@ -56,6 +56,8 @@ synthesize = do
   putStrLn' ""
   bpm <- liftIO $ inputFloat "Select BPM: "
   put (round bpm, 0, [], [], [], [])
+  noOscs <- liftIO $ inputFloat "Enter the number of oscillators"
+  getOscillators (round noOscs)
   synthLoop
 
 -- Initialize a new synthloop
@@ -77,10 +79,7 @@ initSynthLoop = do
 synthLoop :: StateT SynthState IO ()
 synthLoop = do
   beats <- liftIO $ inputFloat "Enter the amount of beats"
-  noOscs <- liftIO $ inputFloat "Enter the number of oscillators"
-
-  modify (\(bpm, _, osc, nts, samps, ns) -> (bpm, beats, osc, nts, samps, ns))
-  getOscillators (round noOscs)
+  modify (\(bpm, _, o, n, ns, nss) -> (bpm, beats, o, n, ns, nss))
 
   noNotes <- liftIO $ inputFloat "Select amount of notes to be played"
   getNotes (round noNotes)
@@ -127,8 +126,7 @@ getNotes x = do
   note <- liftIO getLine
   case Map.lookup note notes of
     Just n -> do
-      (bpm, beats, oscillators, notes, samples, noteSamples) <- get
-      put (bpm, beats, oscillators, notes ++ [n], samples, noteSamples)
+      modify (\(bpm, bts, osc, nts, spl, nspl) -> (bpm, bts, osc, nts ++ [n], spl, nspl))
       getNotes (x - 1)
     Nothing -> do
       putStrLn' "Invalid note, try again."
@@ -138,15 +136,13 @@ getNotes x = do
 generateOscillatorSamples :: StateT SynthState IO ()
 generateOscillatorSamples = do
   (bpm, beats, oscillators, notes, samples, noteSamples) <- get
-  putStrLn' $ show $ length noteSamples
   if null notes
     then do
       -- When we have created samples for all the notes, we update the state by
       -- appending the interferrence of these notes to the samples we have.
       -- We also clear the note sample list to prime it for new note samples to be
       -- created
-      put (bpm, beats, [], [], samples ++ [interference noteSamples], [])
-      putStrLn' $ show (length samples)
+      put (bpm, beats, oscillators, [], samples ++ [interference noteSamples], [])
       initSynthLoop
     else do
       -- As the samples are coordinate based, the start of the new samples need to pick up
