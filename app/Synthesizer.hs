@@ -68,7 +68,11 @@ initSynthLoop = do
   ans <- liftIO getLine
   case ans of
     "y" -> synthLoop
+    "Y" -> synthLoop
     "n" -> do
+      (bpm, beats, osc, notes, samples, noteSamples) <- get
+      put (bpm, beats, osc, notes, samples, noteSamples)
+    "N" -> do
       (bpm, beats, osc, notes, samples, noteSamples) <- get
       put (bpm, beats, osc, notes, samples, noteSamples)
     _ -> do

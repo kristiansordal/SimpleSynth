@@ -22,6 +22,8 @@ putStrLn' s = liftIO $ putStrLn s
 
 putStr' s = liftIO $ putStr s
 
+inputFloat' x = liftIO $ inputFloat x
+
 getStart :: [[Sample]] -> Float
 getStart [] = 0
 getStart [x] = fst $ last x

@@ -1,7 +1,5 @@
 module Parser where
 
--- import Text.Megaparsec.Char.Lexer hiding (float, space)
-
 import Control.Monad.Combinators.Expr
 import Data.Functor
 import Data.Maybe (fromMaybe)
@@ -65,33 +63,3 @@ parseVar = do
 
 term :: Parser WaveExpr
 term = Lit <$> float <|> parseVar <|> betweenParen waveExpression
-
--- Triangle Wave
--- (2a/pi)*asin(sin((f*2pi)*x))
-
--- Sawtooth Wave
--- 2*(fx-floor(1/2 + fx))
-
--- 2*(440x-floor(1/2 + 440x))
--- 2*(220-floor(1/2 + 220)) + (2/pi)*asin(sin((440*2pi)*x))
--- 2*(x/0.05-floor(1/2 + x/0.05))
--- sin(440x) + 2*(x/0.008-floor(1/2 + x/0.008))
--- (2/pi)*asin(sin((440*2pi)*x)) + 2*(440x-floor(1/2 + 440x))
-
--- Square Wave
--- sgn(sin(x))
---
--- Cool Sawtooth + Triangle combinations
--- (2a/pi)*asin(sin((2pi/0.025)*x)) + 2*(x/0.0025-floor(1/2 + 2*x/0.0025))
--- (2/pi)*asin(sin((2pi/0.005)*x)) + 2*(x/0.025-floor(1/2 + 2*x/0.025))
-
--- Sine waves playing C major triad in the 4th octave
--- sin(2pi * 523.28x) + sin(2pi * 659.28x) + sin (2pi * 784x)
-
-test = do
-  let x = runParser waveExpression "" "(2a/pi)*asin(sin((2pi/0.025)*x)) + 2*(x/0.025-floor(1/2 + 2*x/0.025))"
-
-  case x of
-    Left err -> putStrLn (errorBundlePretty err)
-    Right x' -> do
-      print x'

@@ -30,10 +30,10 @@ addSample newSample = do
 inputWaveManual :: StateT WaveState IO ()
 inputWaveManual = do
   (l, s, _, _, _) <- get
-  freq <- liftIO $ inputFloat "Enter wave frequency: "
-  amp <- liftIO $ inputFloat "Enter wave amplitude: "
-  phase <- liftIO $ inputFloat "Enter wave phase: "
-  trans <- liftIO $ inputFloat "Enter waves translation: "
+  freq <- inputFloat' "Enter wave frequency: "
+  amp <- inputFloat' "Enter wave amplitude: "
+  phase <- inputFloat' "Enter wave phase: "
+  trans <- inputFloat' "Enter waves translation: "
   let w = Wave amp freq phase trans
   addSample (createWaveSample w l s)
 
@@ -41,25 +41,25 @@ inputWaveManual = do
 inputWaveExpression :: StateT WaveState IO ()
 inputWaveExpression = do
   (l, s, _, _, _) <- get
-  liftIO $ putStrLn "Enter expression for wave: "
+  putStrLn' "Enter expression for wave: "
   input <- liftIO getLine
   let input' = filter (/= ' ') input
-      xCoords = [0.0, 1 / s .. l]
+      xCoords = [0.0 .. l]
       parsed = runParser waveExpression "" input'
   case parsed of
     Left err -> do
-      liftIO $ putStrLn (errorBundlePretty err)
+      putStrLn' (errorBundlePretty err)
       inputWaveExpression
     Right x -> do
-      let yCoords = map (eval x) xCoords
+      let yCoords = map (\i -> eval x (i / sampleRate)) xCoords
       addSample (zip xCoords yCoords)
 
 genRandomWave :: StateT WaveState IO ()
 genRandomWave = do
-  (s, l, _, _, _) <- get
+  (l, s, _, _, _) <- get
   seed <- liftIO getCPUTime
   let gen = mkStdGen (fromIntegral seed)
-      randNums = take 10 $ randomRs (1.0, s) gen
+      randNums = take 4 $ randomRs (1.0, l) gen
       w = createWaveSample (Wave (head randNums) (randNums !! 1) (randNums !! 2) (randNums !! 3)) l s
   addSample w
 
@@ -67,11 +67,11 @@ getWaves :: Int -> StateT WaveState IO ()
 getWaves 0 = return ()
 getWaves n =
   do
-    liftIO $ putStrLn "Select input mode: "
-    liftIO $ putStrLn "1: Manual input"
-    liftIO $ putStrLn "2: Expression input"
-    liftIO $ putStrLn "3: Generate random wave"
-    liftIO $ putStr "$ "
+    putStrLn' "Select input mode: "
+    putStrLn' "1: Manual input"
+    putStrLn' "2: Expression input"
+    putStrLn' "3: Generate random wave"
+    putStr' "$ "
     c <- liftIO getLine
     case c of
       "1" -> inputWaveManual
@@ -85,77 +85,106 @@ readWavFile = do
   (_, _, _, fileName, mode) <- get
   wave <- liftIO $ getWAVEFile ("wavfiles/" ++ fileName)
   let (samples, sampleRate) = processWaveFile wave
+  putStrLn' $ show $ length samples
+  putStrLn' $ show sampleRate
 
   put (fromIntegral $ length samples, fromIntegral sampleRate, [samples], fileName, mode)
 
 processWaveFile :: WAVE -> ([Sample], Int)
-processWaveFile (WAVE header samples) = (zip xCoords yCoords', waveFrameRate header)
+processWaveFile (WAVE header samples) = (zip xCoords yCoords, waveFrameRate header)
   where
-    yCoords = map sampleToDouble $ concat samples
-    yCoords' = map (\x -> realToFrac x :: Float) yCoords
+    yCoords = map (realToFrac . sampleToDouble) $ concat samples
     xCoords = [0.0, 1 / fromIntegral (waveFrameRate header) ..]
 
 modeSelection :: StateT WaveState IO ()
 modeSelection = do
-  liftIO $ putStrLn "Select Mode: "
-  liftIO $ putStrLn "1: Manual wave entry"
-  liftIO $ putStrLn "2: Read .wav file"
-  liftIO $ putStr "$ "
+  putStrLn' "Select Mode: "
+  putStrLn' "1: Manual wave entry"
+  putStrLn' "2: Read .wav file"
+  putStr' "$ "
   choice <- liftIO getLine
   case choice of
     "1" -> do
       selectionManual
       (l, s, samp, _, _) <- get
       addSample (interference samp)
-      liftIO $ putStrLn "Store file as (default: wave.wav): "
-      liftIO $ putStr "$ "
+      putStrLn' "Store file as (default: wave.wav): "
+      putStr' "$ "
       fileName <- liftIO getLine
       if null fileName
-        then put (l, s, samp, "wave.wav", "1")
-        else put (l, s, samp, fileName, "1")
+        then do
+          put (l, s, samp, "wave.wav", "1")
+          wave <- liftIO $ generateSound (head samp) (maxBound `div` 10)
+          liftIO $ writeWavFile wave "wave.wav"
+        else do
+          put (l, s, samp, fileName, "1")
+          wave <- liftIO $ generateSound (head samp) (maxBound `div` 10)
+          liftIO $ writeWavFile wave fileName
     "2" -> do
-      liftIO $ putStrLn "Enter filename and filepath (if not in current directory) of a .wav file"
-      liftIO $ putStr "$ "
+      putStrLn' "Enter filename and filepath (if not in current directory) of a .wav file"
+      putStr' "$ "
       fileName <- liftIO getLine
       put (0, 0, [], fileName, "2")
       readWavFile
     _ -> do
-      liftIO $ putStrLn "Wrong input, please select either 1 or 2"
+      putStrLn' "Wrong input, please select either 1 or 2"
       modeSelection
 
 selectionManual :: StateT WaveState IO ()
 selectionManual = do
-  n <- liftIO $ inputFloat "How many waves? "
-  l <- liftIO $ inputFloat "Enter length of waves: "
-  s <- liftIO $ inputFloat "Enter sampling rate: "
-  put (l, s, [], "", "")
+  n <- inputFloat' "How many waves? "
+  l <- inputFloat' "Enter length of waves: "
+  s <- inputFloat' "Enter sampling rate: "
+  put (l * s, s, [], "", "")
   getWaves (round n)
 
 loop :: WaveInformation -> IO ()
-loop (length, sampleRate, samples, fileName, c) = do
-  let fftArr = calcFFT (map snd (head samples)) sampleRate length c
+loop (len, sampleRate, samples, fileName, c) = do
+  print $ "Length: " ++ show len
+  print $ "Sample Rate: " ++ show len
+
+  let fftArr = calcFFT (map snd (head samples)) sampleRate len
       waves = decompose fftArr
   plotFigure samples fftArr
-
-  -- play the sound from the wave generated
-  wave <- generateSound (head samples) (maxBound `div` 10)
-  case c of
-    1 -> do
-      writeWavFile wave fileName
-      playSound ("wavfiles/" ++ fileName)
-    2 -> do
-      playSound ("wavfiles/" ++ fileName)
-    _ -> error "Wrong choice"
+  playSound ("wavfiles/" ++ fileName)
 
   eq <- equalize waves
-  let samples' = map (\x -> createWaveSample x (fromIntegral length :: Float) (fromIntegral sampleRate :: Float)) eq
-      samples'' = interference samples' : samples'
-  loop (length, sampleRate, samples, fileName, c)
+  case c of
+    1 -> do
+      let samples' = map (\x -> createWaveSample x (fromIntegral len :: Float) (fromIntegral sampleRate :: Float)) eq
+          samples'' = interference samples' : samples'
+
+      -- play the sound from the wave generated
+      wave <- generateSound (head samples'') maxBound
+      putStr "Save copy as: "
+      fileName' <- getLine
+      if null fileName'
+        then do
+          writeWavFile wave fileName
+          loop (len, sampleRate, samples'', fileName, c)
+        else do
+          writeWavFile wave fileName'
+          loop (len, sampleRate, samples'', fileName', c)
+    2 -> do
+      let samples' = map (\x -> createWaveSample x ((fromIntegral len / fromIntegral sampleRate) :: Float) (fromIntegral sampleRate :: Float)) eq
+          samples'' = interference samples' : samples'
+
+      -- play the sound from the wave generated
+      wave <- generateSound (head samples'') maxBound
+      putStr "Save copy as: "
+      fileName' <- getLine
+      if null fileName'
+        then do
+          writeWavFile wave fileName
+          loop (len, sampleRate, samples'', fileName, c)
+        else do
+          writeWavFile wave fileName'
+          loop (len, sampleRate, samples'', fileName', c)
+    _ -> error "boo"
 
 plotFigure :: [[Sample]] -> [Sample] -> IO ()
 plotFigure samples fftArr = do
-  let waves = decompose fftArr
-      xCoords = map fst (head samples)
+  let xCoords = map fst (head samples)
       yCoords = map snd (head samples)
       xCoordsFFT = map fst fftArr
       yCoordsFFT = map snd fftArr
