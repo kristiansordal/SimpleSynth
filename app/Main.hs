@@ -51,8 +51,8 @@ inputWaveExpression = do
       putStrLn' (errorBundlePretty err)
       inputWaveExpression
     Right x -> do
-      let yCoords = map (\i -> eval x (i / sampleRate)) xCoords
-      addSample (zip xCoords yCoords)
+      let yCoords = map (\i -> eval x (i / s)) xCoords
+      addSample (zip (map (/ s) xCoords) yCoords)
 
 genRandomWave :: StateT WaveState IO ()
 genRandomWave = do
@@ -85,8 +85,6 @@ readWavFile = do
   (_, _, _, fileName, mode) <- get
   wave <- liftIO $ getWAVEFile ("wavfiles/" ++ fileName)
   let (samples, sampleRate) = processWaveFile wave
-  putStrLn' $ show $ length samples
-  putStrLn' $ show sampleRate
 
   put (fromIntegral $ length samples, fromIntegral sampleRate, [samples], fileName, mode)
 
@@ -140,47 +138,26 @@ selectionManual = do
 
 loop :: WaveInformation -> IO ()
 loop (len, sampleRate, samples, fileName, c) = do
-  print $ "Length: " ++ show len
-  print $ "Sample Rate: " ++ show len
-
   let fftArr = calcFFT (map snd (head samples)) sampleRate len
       waves = decompose fftArr
   plotFigure samples fftArr
   playSound ("wavfiles/" ++ fileName)
 
   eq <- equalize waves
-  case c of
-    1 -> do
-      let samples' = map (\x -> createWaveSample x (fromIntegral len :: Float) (fromIntegral sampleRate :: Float)) eq
-          samples'' = interference samples' : samples'
+  let samples' = map (\x -> createWaveSample x (fromIntegral len :: Float) (fromIntegral sampleRate :: Float)) eq
+      samples'' = interference samples' : samples'
 
-      -- play the sound from the wave generated
-      wave <- generateSound (head samples'') maxBound
-      putStr "Save copy as: "
-      fileName' <- getLine
-      if null fileName'
-        then do
-          writeWavFile wave fileName
-          loop (len, sampleRate, samples'', fileName, c)
-        else do
-          writeWavFile wave fileName'
-          loop (len, sampleRate, samples'', fileName', c)
-    2 -> do
-      let samples' = map (\x -> createWaveSample x ((fromIntegral len / fromIntegral sampleRate) :: Float) (fromIntegral sampleRate :: Float)) eq
-          samples'' = interference samples' : samples'
-
-      -- play the sound from the wave generated
-      wave <- generateSound (head samples'') maxBound
-      putStr "Save copy as: "
-      fileName' <- getLine
-      if null fileName'
-        then do
-          writeWavFile wave fileName
-          loop (len, sampleRate, samples'', fileName, c)
-        else do
-          writeWavFile wave fileName'
-          loop (len, sampleRate, samples'', fileName', c)
-    _ -> error "boo"
+  -- play the sound from the wave generated
+  wave <- generateSound (head samples'') maxBound
+  putStr "Save copy as: "
+  fileName' <- getLine
+  if null fileName'
+    then do
+      writeWavFile wave fileName
+      loop (len, sampleRate, samples'', fileName, c)
+    else do
+      writeWavFile wave fileName'
+      loop (len, sampleRate, samples'', fileName', c)
 
 plotFigure :: [[Sample]] -> [Sample] -> IO ()
 plotFigure samples fftArr = do

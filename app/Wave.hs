@@ -57,34 +57,35 @@ data Wave = Wave
   deriving (Read, Show)
 
 createWaveSample :: Wave -> Float -> Float -> [Sample]
-createWaveSample w len sampling = zip xCoords yCoords
+createWaveSample w len sampleRate = zip xCoords yCoords
   where
-    xCoords = [0.0, 1 / sampling .. len]
+    delta = len / sampleRate
+    xCoords = [0.0, 1 / sampleRate .. delta]
     yCoords = map (\x -> amplitude w * sin (2 * pi * frequency w * x + phase w) + translation w) xCoords
 
 sinusoidWaveSample :: Float -> Float -> Float -> Float -> [Sample]
-sinusoidWaveSample start freq len sampling = zip xCoords yCoords
+sinusoidWaveSample start freq len sampleRate = zip xCoords yCoords
   where
-    xCoords = [start, start + 1 / sampling .. start + len]
+    xCoords = [start, start + 1 / sampleRate .. start + len]
     yCoords = map (\x -> sin (2 * pi * x * freq)) xCoords
 
 sawtoothWaveSample :: Float -> Float -> Float -> Float -> [Sample]
-sawtoothWaveSample start freq len sampling = zip xCoords yCoords
+sawtoothWaveSample start freq len sampleRate = zip xCoords yCoords
   where
-    xCoords = [start, start + 1 / sampling .. start + len]
+    xCoords = [start, start + 1 / sampleRate .. start + len]
     yCoords = map (\x -> 2 * (freq * x - fromIntegral (floor (1 / 2 + freq * x)))) xCoords
 
 triangleWaveSample :: Float -> Float -> Float -> Float -> [Sample]
-triangleWaveSample start freq len sampling = zip xCoords yCoords
+triangleWaveSample start freq len sampleRate = zip xCoords yCoords
   where
-    xCoords = [start, start + 1 / sampling .. start + len]
+    xCoords = [start, start + 1 / sampleRate .. start + len]
     -- yCoords = map (\x -> 4 * freq * abs ((x - 4 / freq) `mod'` (1 / freq) - 2 / freq)) xCoords
     yCoords = map (\x -> 2 * abs (2 * (freq * x - fromIntegral (floor (1 / 2 + freq * x)))) - 1) xCoords
 
 squareWaveSample :: Float -> Float -> Float -> Float -> [Sample]
-squareWaveSample start freq len sampling = zip xCoords yCoords
+squareWaveSample start freq len sampleRate = zip xCoords yCoords
   where
-    xCoords = [start, start + 1 / sampling .. start + len]
+    xCoords = [start, start + 1 / sampleRate .. start + len]
     yCoords = map (\x -> signum (sin (2 * pi * freq * x))) xCoords
 
 interference :: [[Sample]] -> [Sample]

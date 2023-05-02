@@ -6,15 +6,6 @@ import Data.List
 import Numeric.Transform.Fourier.FFT
 import Wave
 
--- calcFFTmanual :: [Float] -> Int -> Int -> [Sample]
--- calcFFTmanual yCoords sampleRate signalLength = zip freqs magnitudes
---   where
---     n = sampleRate * signalLength
---     yCoords' = listArray (0, length yCoords - 1) yCoords
---     fftArr = rfft yCoords'
---     freqs = [0, 1 / (fromIntegral signalLength :: Float) .. fromIntegral n]
---     magnitudes = map (\x -> magnitude x / (fromIntegral n :: Float)) (take (n `div` 2) (elems fftArr))
-
 calcFFT :: [Float] -> Int -> Int -> [Sample]
 calcFFT yCoords sampleRate signalLength = zip xCoords magnitudes
   where
@@ -22,12 +13,6 @@ calcFFT yCoords sampleRate signalLength = zip xCoords magnitudes
     fftArr = rfft yCoords'
     xCoords = map (fromIntegral :: Int -> Float) (take (signalLength `div` 2) [0 .. signalLength])
     magnitudes = map (\x -> (magnitude x :: Float) / fromIntegral sampleRate) (take (signalLength `div` 2) (elems fftArr))
-
--- calcFFT :: [Float] -> Int -> Int -> Int -> [Sample]
--- calcFFT yCoords sampleRate signalLength choice
---   | choice == 1 = calcFFTwav yCoords sampleRate signalLength
---   | choice == 2 = calcFFTwav yCoords sampleRate signalLength
---   | otherwise = error $ "Choice not supported" ++ show choice
 
 decompose :: [Sample] -> [Wave]
 decompose fftArr = waves
