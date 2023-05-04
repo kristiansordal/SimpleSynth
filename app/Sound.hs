@@ -6,16 +6,16 @@ import Control.Monad (when)
 import Data.Default.Class (def)
 import Data.Int (Int32)
 import Data.WAVE
-import qualified SDL
 import qualified SDL.Mixer as Mix
 import Wave
 
-header = WAVEHeader 1 48000 32 Nothing
+-- header = WAVEHeader 1 48000 32 Nothing
 
-generateSound :: [Sample] -> Int32 -> IO WAVE
-generateSound samples volume = do
+generateSound :: [Sample] -> Int32 -> Int -> IO WAVE
+generateSound samples volume sampleRate = do
   return $ WAVE header (map (: []) sampleVol)
   where
+    header = WAVEHeader 1 sampleRate 32 Nothing
     sampleVol = map (round . (* fromIntegral volume) . snd) samples :: [Int32]
 
 writeWavFile :: WAVE -> String -> IO ()
@@ -43,7 +43,6 @@ playSound file = do
   Mix.closeAudio
 
   Mix.quit
-  SDL.quit
 
 repeatSound :: String -> IO ()
 repeatSound file = do
@@ -54,13 +53,6 @@ repeatSound file = do
 
   putStrLn "♫♫♫♫♫ sound playing ♫♫♫♫♫"
   playAgain sound
-
-  Mix.free sound
-
-  Mix.closeAudio
-
-  Mix.quit
-  SDL.quit
 
 playAgain sound = do
   Mix.play sound

@@ -9,9 +9,34 @@ import Data.List (transpose)
 
 type Mode = String
 
-type WaveState = (Float, Float, [[Sample]], String, Mode)
+type SignalLength = Float
+
+type SampleRate = Float
 
 type Sample = (Float, Float)
+
+type WaveVars =
+  ( SignalLength,
+    SampleRate,
+    [[Sample]],
+    FilePath,
+    Mode
+  )
+
+type WaveVars' =
+  ( SignalLength,
+    SampleRate,
+    [[Sample]],
+    FilePath
+  )
+
+data Wave = Wave
+  { amplitude :: Float,
+    frequency :: Float,
+    phase :: Float,
+    translation :: Float
+  }
+  deriving (Read, Show)
 
 data WaveExpr
   = Lit Float
@@ -48,19 +73,12 @@ eval (Mod x y) v = eval x v `mod'` eval y v
 eval (Floor x) v = fromIntegral $ floor (eval x v) :: Float
 eval (Signum x) v = signum (eval x v)
 
-data Wave = Wave
-  { amplitude :: Float,
-    frequency :: Float,
-    phase :: Float,
-    translation :: Float
-  }
-  deriving (Read, Show)
-
 createWaveSample :: Wave -> Float -> Float -> [Sample]
 createWaveSample w len sampleRate = zip xCoords yCoords
   where
     delta = len / sampleRate
     xCoords = [0.0, 1 / sampleRate .. delta]
+    -- xCoords = [0.0, delta .. len]
     yCoords = map (\x -> amplitude w * sin (2 * pi * frequency w * x + phase w) + translation w) xCoords
 
 sinusoidWaveSample :: Float -> Float -> Float -> Float -> [Sample]
@@ -79,7 +97,6 @@ triangleWaveSample :: Float -> Float -> Float -> Float -> [Sample]
 triangleWaveSample start freq len sampleRate = zip xCoords yCoords
   where
     xCoords = [start, start + 1 / sampleRate .. start + len]
-    -- yCoords = map (\x -> 4 * freq * abs ((x - 4 / freq) `mod'` (1 / freq) - 2 / freq)) xCoords
     yCoords = map (\x -> 2 * abs (2 * (freq * x - fromIntegral (floor (1 / 2 + freq * x)))) - 1) xCoords
 
 squareWaveSample :: Float -> Float -> Float -> Float -> [Sample]

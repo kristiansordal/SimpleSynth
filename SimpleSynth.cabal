@@ -23,7 +23,8 @@ executable SimpleSynth
                       FFT,
                       Sound,
                       Synthesizer,
-                      Utils
+                      Utils,
+                      DFTVisualizer
     -- other-extensions:
     build-depends:    base ^>=4.16.4.0,
                       mtl,

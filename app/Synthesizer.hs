@@ -38,12 +38,21 @@ data Oscillator
 -- [[Sample]]_1 - The samples of the melody so far
 -- [[Sample]]_2 - The samples of the notes in the current span - These are interferred and added to [[Sample]]_1
 -- after the list of notes are exhausted
-type SynthState = (BPM, Beats, [Oscillator], [Frequency], [[Sample]], [[Sample]])
+type SynthVars =
+  ( BPM,
+    Beats,
+    [Oscillator],
+    [Frequency],
+    [[Sample]],
+    [[Sample]]
+  )
+
+type SynthState = StateT SynthVars IO ()
 
 sampleRate :: Float
 sampleRate = 48000
 
-synthesize :: StateT SynthState IO ()
+synthesize :: SynthState
 synthesize = do
   putStrLn' "This is a simple implementation on a synthesizer. It works in the following manner: "
   putStrLn' "1: Specify the tempo / BPM of the soundbyte to be generated"
@@ -61,7 +70,7 @@ synthesize = do
   synthLoop
 
 -- Initialize a new synthloop
-initSynthLoop :: StateT SynthState IO ()
+initSynthLoop :: SynthState
 initSynthLoop = do
   putStrLn' "Continue adding to the melody? (y / n)"
   putStr' "$ "
@@ -80,7 +89,7 @@ initSynthLoop = do
       initSynthLoop
 
 -- Get the number of beats, oscillators and notes
-synthLoop :: StateT SynthState IO ()
+synthLoop :: SynthState
 synthLoop = do
   beats <- liftIO $ inputFloat "Enter the amount of beats"
   modify (\(bpm, _, o, n, ns, nss) -> (bpm, beats, o, n, ns, nss))
@@ -91,7 +100,7 @@ synthLoop = do
   generateOscillatorSamples
 
 -- Get the type of oscillator
-getOscillators :: Int -> StateT SynthState IO ()
+getOscillators :: Int -> SynthState
 getOscillators 0 = return ()
 getOscillators x = do
   (bpm, beats, oscillators, notes, samples, noteSamples) <- get
@@ -122,7 +131,7 @@ getOscillators x = do
   getOscillators (x - 1)
 
 -- Gets the frequencies of notes from the lookup table in Utils
-getNotes :: Int -> StateT SynthState IO ()
+getNotes :: Int -> SynthState
 getNotes 0 = return ()
 getNotes x = do
   putStrLn' "Pick a note"
@@ -137,7 +146,7 @@ getNotes x = do
       getNotes x
 
 -- Generates samples for each oscillator and interfers them
-generateOscillatorSamples :: StateT SynthState IO ()
+generateOscillatorSamples :: SynthState
 generateOscillatorSamples = do
   (bpm, beats, oscillators, notes, samples, noteSamples) <- get
   if null notes
@@ -179,6 +188,6 @@ playSynth = do
   putStrLn "Save file as:"
   putStr "$ "
   fileName <- getLine
-  sound <- generateSound (concat samples) (maxBound `div` 10)
+  sound <- generateSound (concat samples) (maxBound `div` 10) (round sampleRate)
   writeWavFile sound fileName
   repeatSound ("wavfiles/" ++ fileName)
