@@ -4,14 +4,14 @@ This is a simple implementation of a synthesizer and a DFT visualizer written in
 
 The program has two components
 
-##DFT Visualizer
+## DFT Visualizer
 Performs DFT on the provided wave, either by reading a .wav file, or by various input modes (expression, manual, and randomly generated). Allows for equalizing of frequencies by applying a low or high-pass filter, or by equalizing individual frequencies.
 
-##Synthesizer
+## Synthesizer
 Create music and melodies by selecting from various oscillators, set BPM, beat length, amount of notes and notes to create melody. Works in conjunction with the DFT Visualizer and equalizer by reading the generated .wav file.
 
 
-##Installation
+## Installation
 To get started, run the following commands:
 
 ```
