@@ -18,9 +18,7 @@ import Text.Megaparsec hiding (State)
 import Utils
 import Wave
 
-type WaveInformation = (Int, Int, [Sample], String, Int)
-
-type WaveState = StateT WaveVars' IO ()
+type WaveState = StateT WaveVars IO ()
 
 -- Adds a sample to the wave state
 addSample :: [Sample] -> WaveState

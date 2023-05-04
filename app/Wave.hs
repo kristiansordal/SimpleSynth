@@ -7,8 +7,6 @@ module Wave where
 import Data.Fixed (mod')
 import Data.List (transpose)
 
-type Mode = String
-
 type SignalLength = Float
 
 type SampleRate = Float
@@ -16,14 +14,6 @@ type SampleRate = Float
 type Sample = (Float, Float)
 
 type WaveVars =
-  ( SignalLength,
-    SampleRate,
-    [[Sample]],
-    FilePath,
-    Mode
-  )
-
-type WaveVars' =
   ( SignalLength,
     SampleRate,
     [[Sample]],
