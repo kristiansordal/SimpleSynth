@@ -6,18 +6,24 @@ import Data.List
 import Numeric.Transform.Fourier.FFT
 import Wave
 
+-- Computes the DFT using the FFT algorithm.
 calcFFT :: [Float] -> Int -> Int -> [Sample]
 calcFFT yCoords sampleRate signalLength = zip xCoords magnitudes
   where
     yCoords' = listArray (0, length yCoords - 1) yCoords
     fftArr = rfft yCoords'
-    xCoords = map (fromIntegral :: Int -> Float) (take (signalLength `div` 2) [0 .. signalLength])
+
+    -- Half step the FFT to normalize the frequencies.
+    xCoords = [0, 0.5 .. (fromIntegral sampleRate)]
+
+    -- Data.Complex provides the magnitude function. Magnitude = Amplitude / 2
     magnitudes = map (\x -> (magnitude x :: Float) / fromIntegral sampleRate) (take (signalLength `div` 2) (elems fftArr))
 
+-- Decomposes the FFT array into its constituents. Frequencies with amplitudes <= 0.001 are filtered away to improve performance
 decompose :: [Sample] -> [Wave]
 decompose fftArr = waves
   where
-    freqAmp = sortBy (\(_, amp1) (_, amp2) -> compare amp2 amp1) (map (\(x, y) -> (x, y * 2)) (filter ((>= 0.01) . snd) fftArr))
+    freqAmp = sortBy (\(_, amp1) (_, amp2) -> compare amp2 amp1) (map (\(x, y) -> (x, y)) (filter ((>= 0.001) . snd) fftArr))
     waves = map (\(freq, amp) -> Wave amp freq 0 0) freqAmp
 
 equalize :: [Wave] -> IO [Wave]
@@ -54,12 +60,15 @@ equalize waves = do
       putStrLn "Wrong input, please select either 1, 2 or 3"
       equalize waves
 
+-- Filters frequencies higher than the cutoff
 lowpass :: [Wave] -> Float -> [Wave]
 lowpass w cutoff = filter (\(Wave _ freq _ _) -> freq <= cutoff) w
 
+-- Filter frequencies lower than the cutoff
 highpass :: [Wave] -> Float -> [Wave]
 highpass w cutoff = filter (\(Wave _ freq _ _) -> freq >= cutoff) w
 
+-- Reduces the amplitude, and thereby the volume of individual frequencies
 individual :: [Wave] -> Int -> Float -> [Wave]
 individual ws i reduction = ws'
   where
@@ -73,6 +82,7 @@ individual ws i reduction = ws'
         }
     ws' = take (i - 1) ws ++ [equalizedWave] ++ drop i ws
 
+-- Prints the frequency and amplitude of the waves
 printWaves :: [Wave] -> Int -> IO ()
 printWaves [] _ = return ()
 printWaves (Wave amp freq _ _ : ws) i = do
