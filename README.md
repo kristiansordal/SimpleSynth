@@ -21,7 +21,7 @@ $ ghci Main
 ```
 
 ### Dependencies
-> NOTE: Before installing any packages, to avoid breaking your GHC installation (as I did several times), make sure you don't `cabal install` any package before checkin whether or not they are already installed by `ghcup`. Check this by running `ghc-pkg list | grep <PACKAGE_NAME>`
+> NOTE: Before installing any packages, to avoid breaking your GHC installation (as I did several times), make sure you don't `cabal install` any package before checking whether or not they are already installed by `ghcup`. Check this by running `ghc-pkg list | grep <PACKAGE_NAME>`
 
 
 Run the following commands to install necessary libraries:
