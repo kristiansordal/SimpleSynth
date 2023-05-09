@@ -9,8 +9,6 @@ import Data.WAVE
 import qualified SDL.Mixer as Mix
 import Wave
 
--- header = WAVEHeader 1 48000 32 Nothing
-
 generateSound :: [Sample] -> Int32 -> Int -> IO WAVE
 generateSound samples volume sampleRate = do
   return $ WAVE header (map (: []) sampleVol)

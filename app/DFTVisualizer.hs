@@ -127,7 +127,7 @@ getWaves n =
 waveInformation :: WaveState
 waveInformation = do
   n <- (round :: Float -> Int) <$> inputFloat' "How many waves? "
-  l <- inputFloat' "Enter length of waves: "
+  l <- inputFloat' "Enter length of waves (in seconds): "
   s <- inputFloat' "Enter sampling rate: "
   put (l * s, s, [], "")
   getWaves n
@@ -169,10 +169,14 @@ plotFigure samples fftArr = do
       % setSizeInches 10 8
       % setSubplot 0
       % title "Time Domain"
+      % xlabel "Time [s]"
+      % ylabel "Amplitude"
       % plot xCoords yCoords
       @@ [o2 "linewidth" 0.5]
       % setSubplot 1
       % title "Frequency Domain"
+      % xlabel "Frequency Bins [Hz]"
+      % ylabel "Magnitude"
       % plot xCoordsFFT yCoordsFFT
       @@ [o2 "linewidth" 1]
 

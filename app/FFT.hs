@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-type-defaults #-}
+
 module FFT where
 
 import Data.Array.CArray
@@ -14,10 +16,21 @@ calcFFT yCoords sampleRate signalLength = zip xCoords magnitudes
     fftArr = rfft yCoords'
 
     -- Half step the FFT to normalize the frequencies.
-    xCoords = [0, 0.5 .. (fromIntegral sampleRate)]
+    xCoords = [0, 1 .. (fromIntegral sampleRate)]
 
     -- Data.Complex provides the magnitude function. Magnitude = Amplitude / 2
-    magnitudes = map (\x -> (magnitude x :: Float) / fromIntegral sampleRate) (take (signalLength `div` 2) (elems fftArr))
+    magnitudes =
+      getElems $
+        map
+          (\x -> (magnitude x :: Float) / fromIntegral sampleRate)
+          (take (signalLength `div` 2) (elems fftArr))
+
+-- Remove reduntant samples and get the ones we care about
+getElems :: [Float] -> [Float]
+getElems l = y
+  where
+    (evens, _) = partition (even . fst) (zip [0 ..] l)
+    (_, y) = unzip evens
 
 -- Decomposes the FFT array into its constituents. Frequencies with amplitudes <= 0.001 are filtered away to improve performance
 decompose :: [Sample] -> [Wave]
